@@ -447,11 +447,15 @@ function App() {
   useEffect(() => {
     // 1. Initialize Google Auth (Required for Web/Native)
     // We explicitly pass the client ID here to avoid any configuration merging issues
-    GoogleAuth.initialize({
-      clientId: WEB_CLIENT_ID,
-      scopes: ['profile', 'email'],
-      grantOfflineAccess: false, // Changed to false for better stability on Android
-    });
+    try {
+        GoogleAuth.initialize({
+          clientId: WEB_CLIENT_ID,
+          scopes: ['profile', 'email'],
+          grantOfflineAccess: false, // Changed to false for better stability on Android
+        });
+    } catch (e) {
+        console.error("Google Auth Init Failed", e);
+    }
 
     const accepted = localStorage.getItem('halalScannerTermsAccepted');
     if (accepted !== 'true') setShowOnboarding(true);
@@ -849,7 +853,17 @@ function App() {
          {isLoading && (
             <div className="w-64 bg-black/80 backdrop-blur-xl rounded-2xl p-6 text-center border border-white/10 pointer-events-auto shadow-2xl">
                <div className="w-full bg-gray-700 rounded-full h-2 mb-4 overflow-hidden"><div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${progress}%` }}></div></div>
-               <p className="text-emerald-400 font-bold animate-pulse text-sm">{t.analyzingDeep}</p>
+               <p className="text-emerald-400 font-bold animate-pulse text-sm mb-3">{t.analyzingDeep}</p>
+               <button 
+                 onClick={() => {
+                     if (abortControllerRef.current) abortControllerRef.current.abort();
+                     setIsLoading(false);
+                     setImages([]); // Reset images on cancel or keep them? Resetting is safer state-wise.
+                 }}
+                 className="text-xs text-gray-400 hover:text-white underline decoration-gray-500 underline-offset-4"
+               >
+                 {t.cancel}
+               </button>
             </div>
          )}
 

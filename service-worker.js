@@ -3,7 +3,6 @@ const CACHE_NAME = 'halal-scanner-v2';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/index.tsx',
   '/manifest.json',
   '/icon.png',
   'https://cdn.tailwindcss.com',
