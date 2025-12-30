@@ -31,7 +31,7 @@ const config: CapacitorConfig = {
       // ✅ CRITICAL: This MUST be the "Web Client ID" from Google Cloud Console.
       // Do NOT use the Android Client ID here.
       // Web Client ID usually ends with "...apps.googleusercontent.com"
-      serverClientId: "772072434808-6gr30mgjfg5mn5mapmha31l8ooda84ud.apps.googleusercontent.com",
+      serverClientId: "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com",
       
       // ⚠️ Changed to false to prevent issues with authorization codes. We only need the idToken.
       forceCodeForRefreshToken: false,

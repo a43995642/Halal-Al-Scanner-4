@@ -19,7 +19,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Hardcoded for debugging visibility - matches capacitor.config.ts
-  const DEBUG_WEB_CLIENT_ID = "772072434808-6gr30mgjfg5mn5mapmha31l8ooda84ud.apps.googleusercontent.com";
+  const DEBUG_WEB_CLIENT_ID = "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,8 +139,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
          // This ensures we stay in the app, but prompts the user to fix the config
          // We also include DEBUG_WEB_CLIENT_ID in the message to fix the unused variable error
          msg = language === 'ar'
-           ? `فشل تسجيل الدخول (Error 10).\n\nسبب المشكلة: إعدادات SHA-1 ناقصة في Google Console.\n\nتأكد من إضافة SHA-1 الخاص بالتطبيق (Debug/Release) كـ Android Client في لوحة تحكم جوجل.\n\nClient ID المستخدم: ${DEBUG_WEB_CLIENT_ID}`
-           : `Login Failed (Error 10).\n\nReason: Missing SHA-1 Fingerprint in Google Cloud Console.\n\nAction: Add your app's SHA-1 (Debug/Release) as an Android Client in Google Console.\n\nUsing Client ID: ${DEBUG_WEB_CLIENT_ID}`;
+           ? `فشل تسجيل الدخول (Error 10).\n\nالأسباب المحتملة:\n1. بصمة SHA-1 غير متطابقة (تأكد من استخدام npm run build-apk).\n2. اسم الحزمة في جوجل يجب أن يكون io.halalscanner.ai\n3. لم تضع بريد للدعم في OAuth Consent Screen.\n\nClient ID المستخدم: ${DEBUG_WEB_CLIENT_ID}`
+           : `Login Failed (Error 10).\n\nPossible Causes:\n1. SHA-1 Mismatch (Ensure you use npm run build-apk).\n2. Package name in Google Console MUST be io.halalscanner.ai\n3. Missing Support Email in OAuth Consent Screen.\n\nUsing Client ID: ${DEBUG_WEB_CLIENT_ID}`;
       }
       // Handle "provider is not enabled"
       else if (msg.includes('provider is not enabled')) {

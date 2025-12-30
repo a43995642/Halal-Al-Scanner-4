@@ -22,7 +22,7 @@ import { App as CapacitorApp } from '@capacitor/app'; // Import Capacitor App pl
 const FREE_SCANS_LIMIT = 20; 
 const MAX_IMAGES_PER_SCAN = 4; 
 // The Web Client ID (Must match what is in Google Cloud Console > Web Application)
-const WEB_CLIENT_ID = "772072434808-6gr30mgjfg5mn5mapmha31l8ooda84ud.apps.googleusercontent.com";
+const WEB_CLIENT_ID = "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com";
 
 // Utility for Haptic Feedback
 const vibrate = (pattern: number | number[] = 10) => {
