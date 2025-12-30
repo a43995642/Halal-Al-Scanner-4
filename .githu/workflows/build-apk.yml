@@ -31,15 +31,20 @@ jobs:
       - name: Make Scripts Executable
         run: chmod +x scripts/*.js
 
+      # Explicit step to generate keys before build starts
+      - name: Generate Keystore & SHA-1
+        run: npm run get-sha1
+
       - name: Build APK
         run: npm run build-apk
         env:
           CI: true
 
       - name: Upload APK and SHA-1 Info
+        if: always() # Upload artifacts even if build fails (useful for debugging signing)
         uses: actions/upload-artifact@v4
         with:
-          name: HalalScanner-App-And-Keys
+          name: HalalScanner-Build-Artifacts
           path: |
             android/app/build/outputs/apk/debug/app-debug.apk
             sha1_fingerprint.txt

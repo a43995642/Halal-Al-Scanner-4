@@ -1,3 +1,4 @@
+
 import { exec } from 'child_process';
 import { homedir } from 'os';
 import { join, resolve } from 'path';
@@ -80,8 +81,20 @@ const main = async () => {
             console.log('\x1b[32m%s\x1b[0m', sha1); 
             console.log('====================================================');
             
-            // SAVE TO FILE for GitHub Artifacts
-            writeFileSync(fingerprintFile, `SHA-1 FINGERPRINT:\n${sha1}\n\nAdd this to Google Cloud Console > Android Client.`);
+            // SAVE TO FILE for GitHub Artifacts with explicit instructions
+            const fileContent = `SHA-1 FINGERPRINT (DEBUG):\n${sha1}\n\n` +
+                                `==================================================================\n` +
+                                `INSTRUCTIONS:\n` +
+                                `1. Copy the SHA-1 above.\n` +
+                                `2. Go to Google Cloud Console > APIs & Services > Credentials.\n` +
+                                `3. Add/Update your Android Client ID with this fingerprint.\n` +
+                                `4. IMPORTANT: If this keystore was generated fresh in CI (GitHub Actions),\n` +
+                                `   download 'debug.keystore' from the artifacts and COMMIT IT to your\n` +
+                                `   project root. Otherwise, a new key (and new SHA-1) will be\n` +
+                                `   generated on every build, breaking Google Sign-In.\n` +
+                                `==================================================================`;
+            
+            writeFileSync(fingerprintFile, fileContent);
             console.log(`📄 SHA-1 saved to: ${fingerprintFile}`);
         } else {
             console.log('⚠️ Could not find SHA1 in keytool output.');
