@@ -1,0 +1,208 @@
+
+import { TranslationDictionary } from '../types';
+
+const ar: TranslationDictionary = {
+  appTitle: "فاحص الحلال",
+  appSubtitle: "Halal Scanner AI",
+  errorTitle: "عذراً، حدث خطأ",
+  errorDesc: "واجه التطبيق مشكلة غير متوقعة. يرجى إعادة التشغيل.",
+  reload: "إعادة التحميل",
+  errorDetails: "تفاصيل الخطأ",
+  cameraErrorTitle: "الكاميرا لا تعمل؟",
+  useNativeCamera: "استخدام كاميرا النظام",
+  close: "إغلاق",
+  flashToggle: "تبديل الفلاش",
+  closeCamera: "إغلاق الكاميرا",
+  captureHint: "اضغط للتصوير، علّق للتصوير المتعدد",
+  imgAdded: "تمت إضافة الصورة",
+  statusHalal: "حلال",
+  statusHaram: "حرام",
+  statusDoubtful: "مشتبه به",
+  statusNonFood: "غير غذائي",
+  statusUnknown: "غير معروف",
+  statusHalalSub: "Halal",
+  statusHaramSub: "Haram",
+  statusDoubtfulSub: "Mushbooh / Doubtful",
+  statusNonFoodSub: "Non-Food / Barcode",
+  statusUnknownSub: "يرجى تصوير منتج غذائي",
+  historyTitle: "سجل الفحوصات",
+  noHistory: "لا يوجد سجلات سابقة",
+  manualInputTitle: "إدخال المكونات يدوياً",
+  manualInputPlaceholder: "الصق المكونات هنا... (مثال: E120, Gelatin, ماء، سكر)",
+  manualInputHint: "يمكنك كتابة أرقام المواد المضافة (E-Numbers) أو أسماء المكونات.",
+  analyzeTextBtn: "فحص النص",
+  freeScansLeft: "مجاناً",
+  proBadge: "نسخة كاملة",
+  howItWorks: "كيف يعمل",
+  history: "السجل",
+  mainHint: "صور المكونات، أو ابحث برقم الباركود.",
+  btnCamera: "الكاميرا",
+  btnGallery: "معرض الصور",
+  btnManual: "كتابة المكونات",
+  selectedImages: "الصور المختارة",
+  deleteAll: "حذف الكل",
+  addImage: "إضافة صورة",
+  analyzingText: "تحليل النص...",
+  moreImages: "صور أخرى",
+  confidence: "دقة",
+  ingredientsDetected: "المكونات التي تم رصدها:",
+  noIngredientsFound: "لم يتم رصد مكونات محددة",
+  analyzingDeep: "جاري التحليل العميق...",
+  analyzingDesc: "نقوم بفحص كل مكون بدقة لضمان النتيجة.",
+  analysisFailed: "تعذر التحليل",
+  retry: "إعادة المحاولة",
+  retryHighCompression: "محاولة (ضغط عالي)",
+  cancel: "إلغاء",
+  scanImagesBtn: "فحص الصور",
+  share: "مشاركة",
+  newScan: "فحص جديد",
+  resultTitle: "النتيجة:",
+  ingredientsDetails: "تفاصيل المكونات:",
+  footerDisclaimer1: "هذا التطبيق يستخدم الذكاء الاصطناعي وقد يحتمل الخطأ.",
+  footerDisclaimer2: "دائماً تحقق من المكونات بنفسك.",
+  privacyPolicy: "سياسة الخصوصية",
+  termsOfUse: "شروط الاستخدام",
+  onboardingTitle1: "ماسح الحلال الذكي",
+  onboardingDesc1: "أداة ذكية تساعدك على فحص المكونات الغذائية والتأكد من سلامتها الشرعية في ثوانٍ.",
+  onboardingTitle2: "كيفية الاستخدام",
+  onboardingDesc2: "الأفضل: تصوير قائمة المكونات. يمكن أيضاً تصوير واجهة المنتج.",
+  onboardingWarning: "تصوير الباركود فقط قد لا يعطي نتيجة",
+  onboardingTitle3: "تنبيه وإخلاء مسؤولية",
+  readCarefully: "يرجى قراءة التالي بعناية:",
+  disclaimer1: "هذا التطبيق يستخدم الذكاء الاصطناعي، وهو يحتمل الخطأ والصواب.",
+  disclaimer2: "النتائج للمساعدة فقط ولا تُعتبر فتوى شرعية أو بديلاً عن قراءة المكونات.",
+  disclaimer3: "أنت المسؤول الأول والأخير عن التحقق من حلال المنتج.",
+  disclaimer4: "في حال الشك، ابحث عن علامة \"حلال\" المعتمدة.",
+  next: "التالي",
+  agree: "فهمت وأوافق",
+  subTitle: "افتح النسخة الاحترافية",
+  subTitlePro: "افتح النسخة الاحترافية",
+  subDesc: "احصل على وصول غير محدود ودقة أعلى",
+  featureSpeed: "أداء فائق ودقة استثنائية",
+  featureSpeedDesc: "استخدام أحدث تقنيات الذكاء الاصطناعي لنتائج أكثر موثوقية",
+  featureUnlimited: "فحوصات لا محدودة",
+  featureUnlimitedDesc: "لا قيود يومية على عدد الصور أو المكونات",
+  featureSupport: "شريك في التطوير والأجر",
+  featureSupportDesc: "اشتراكك يدعم استمرار الخدمة وتطوير ميزات تخدم الأمة الإسلامية",
+  choosePlan: "اختر الخطة المناسبة:",
+  monthlyPlan: "اشتراك شهري",
+  monthlyDesc: "يجدد تلقائياً، إلغاء في أي وقت",
+  monthlyPrice: "9.99 ر.س",
+  month: "شهر",
+  lifetimePlan: "مدى الحياة",
+  lifetimeDesc: "دفعة واحدة فقط، لا اشتراكات",
+  lifetimePrice: "49.99 ر.س",
+  bestValue: "أفضل قيمة (توفير 60%)",
+  buyLifetime: "شراء مدى الحياة",
+  subscribeNow: "اشترك الآن",
+  restorePurchases: "استعادة المشتريات",
+  maxImages: "الحد الأقصى للصور",
+  onlyImages: "يرجى اختيار صور فقط",
+  unexpectedError: "حدث خطأ غير متوقع",
+  connectionError: "خطأ في الاتصال",
+  limitReachedError: "لقد استنفدت المحاولات المجانية",
+  imageTooLarge: "حجم الصورة كبير جداً",
+  shareText: "نتيجة فحص الحلال",
+  shareCopied: "تم نسخ النتيجة إلى الحافظة",
+  activating: "جاري تفعيل الاشتراك...",
+  activated: "تم تفعيل النسخة الكاملة!",
+  privacyTitle: "سياسة الخصوصية",
+  privacyContent: `
+  1. جمع البيانات:
+  نحن نستخدم الكاميرا فقط لتحليل صور المكونات الغذائية في الوقت الفعلي. الصور تُرسل إلى خوادمنا للمعالجة ولا يتم بيعها لأطراف ثالثة.
+  
+  2. البيانات الشخصية:
+  لا نجمع أي بيانات شخصية (مثل الاسم أو البريد الإلكتروني) إلا إذا قمت بإنشاء حساب اختياري لحفظ السجل.
+  
+  3. الأمان:
+  نستخدم تقنيات تشفير متقدمة لحماية بياناتك أثناء الإرسال.
+  
+  4. المسؤولية:
+  نتائج التطبيق تعتمد على الذكاء الاصطناعي وقد تحتمل الخطأ. المستخدم مسؤول عن التحقق النهائي.
+  `,
+  termsTitle: "شروط الاستخدام",
+  termsContent: `
+  1. قبول الشروط:
+  باستخدامك لهذا التطبيق، فإنك توافق على الالتزام بهذه الشروط. إذا كنت لا توافق عليها، يرجى عدم استخدام التطبيق.
+
+  2. طبيعة الخدمة:
+  هذا التطبيق هو أداة مساعدة تعتمد على تقنيات الذكاء الاصطناعي (AI) لتحليل النصوص والصور. النتائج المقدمة هي لغرض الاسترشاد فقط ولا تعتبر فتوى شرعية نهائية أو استشارة غذائية طبية.
+
+  3. إخلاء المسؤولية:
+  - لا نضمن دقة النتائج بنسبة 100%. قد يخطئ النظام في قراءة بعض المكونات أو تفسيرها.
+  - المستخدم يتحمل المسؤولية الكاملة عن التحقق من المنتج قبل استهلاكه.
+  - المطورون غير مسؤولين عن أي أضرار (مادية، معنوية، أو صحية) قد تنجم عن استخدام التطبيق أو الاعتماد على نتائجه.
+
+  4. الاستخدام العادل:
+  يُمنع استخدام التطبيق لأغراض غير قانونية أو محاولة التلاعب بالخدمة. نحتفظ بالحق في حظر أي مستخدم يسيء استخدام الخدمة.
+
+  5. التعديلات:
+  قد نقوم بتحديث هذه الشروط من وقت لآخر. استمرارك في استخدام التطبيق يعني موافقتك على الشروط المحدثة.
+  `,
+  closeBtn: "إغلاق",
+  multiProductWarning: "يمكنك إضافة حتى *4 صور* لـ *منتج واحد* فقط.\nالتقط الصور من زوايا مختلفة لنفس المنتج لعرض المكونات بوضوح.\nلا يدعم الفحص تحليل عدة منتجات في عملية واحدة.",
+  cameraTips: "نصائح التصوير",
+  coachTapTitle: "ضغطة واحدة: التقاط صورة واحدة",
+  coachHoldTitle: "ضغط مطوّل: التقاط عدة صور لنفس المنتج",
+  coachAnglesTitle: "صوّر من زوايا مختلفة لتحليل أدق",
+  gotIt: "فهمت، لا تظهر مرة أخرى",
+  btnBarcode: "بحث بالباركود",
+  barcodeTitle: "أدخل رقم الباركود",
+  barcodePlaceholder: "مثال: 5000123456789",
+  searchBtn: "بحث عن المنتج",
+  barcodeNotFound: "لم يتم العثور على المنتج. حاول تصوير المكونات.",
+  searching: "جاري البحث...",
+  productFound: "تم العثور على المنتج!",
+  // Settings & Cropper
+  settingsTitle: "الإعدادات",
+  generalSettings: "عام",
+  language: "اللغة",
+  notifications: "الإشعارات",
+  notificationsDesc: "تلقي تنبيهات عند تحديث حالة المكونات.",
+  storage: "التخزين",
+  clearHistory: "مسح السجل",
+  clearHistoryDesc: "حذف جميع عمليات الفحص السابقة من جهازك.",
+  clearHistoryConfirm: "تم مسح السجل بنجاح.",
+  subscription: "الاشتراك",
+  manageSubscription: "إدارة الاشتراك",
+  appVersion: "نسخة التطبيق",
+  cropTitle: "تعديل الصورة",
+  rotate: "تدوير",
+  crop: "قص الصورة",
+  confirm: "تأكيد",
+  reset: "إعادة ضبط",
+  editImage: "تعديل الصورة",
+  // Auth
+  authTitle: "حسابي",
+  signIn: "تسجيل الدخول",
+  signUp: "إنشاء حساب",
+  email: "البريد الإلكتروني",
+  password: "كلمة المرور",
+  or: "أو",
+  continueWithGoogle: "المتابعة باستخدام Google",
+  continueWithApple: "المتابعة باستخدام Apple",
+  dontHaveAccount: "ليس لديك حساب؟",
+  alreadyHaveAccount: "لديك حساب بالفعل؟",
+  authDesc: "أنشئ حساباً لحفظ سجلك واشتراكك ومزامنة بياناتك عبر الأجهزة.",
+  loggingIn: "جاري الدخول...",
+  signingUp: "جاري التسجيل...",
+  invalidEmail: "البريد الإلكتروني غير صالح",
+  weakPassword: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+  loginSuccess: "تم تسجيل الدخول بنجاح",
+  signupSuccess: "تم إنشاء الحساب! يرجى التحقق من بريدك الإلكتروني.",
+  signOut: "تسجيل الخروج",
+  exitApp: "الخروج من التطبيق",
+  guest: "زائر",
+  profile: "الملف الشخصي",
+  // Reporting
+  reportError: "هل النتيجة خاطئة؟",
+  reportTitle: "إبلاغ عن خطأ",
+  reportDesc: "مساهمتك تساعدنا في تحسين دقة التطبيق للجميع.",
+  correctStatus: "ما هي الحالة الصحيحة؟",
+  notes: "ملاحظات إضافية (اختياري)",
+  notesPlaceholder: "اشرح سبب الخطأ... (مثال: يحتوي على E120)",
+  sendReport: "إرسال التقرير",
+  reportSent: "شكراً لك! تم استلام تقريرك."
+};
+
+export default ar;

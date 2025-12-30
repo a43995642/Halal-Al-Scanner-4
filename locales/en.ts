@@ -1,0 +1,208 @@
+
+import { TranslationDictionary } from '../types';
+
+const en: TranslationDictionary = {
+  appTitle: "Halal Scanner",
+  appSubtitle: "Halal Scanner AI",
+  errorTitle: "Sorry, an error occurred",
+  errorDesc: "The app encountered an unexpected problem. Please restart.",
+  reload: "Reload",
+  errorDetails: "Error Details",
+  cameraErrorTitle: "Camera not working?",
+  useNativeCamera: "Use System Camera",
+  close: "Close",
+  flashToggle: "Toggle Flash",
+  closeCamera: "Close Camera",
+  captureHint: "Tap to capture, Hold for multi-shot",
+  imgAdded: "Image Added",
+  statusHalal: "Halal",
+  statusHaram: "Haram",
+  statusDoubtful: "Doubtful",
+  statusNonFood: "Non-Food",
+  statusUnknown: "Unknown",
+  statusHalalSub: "Permissible",
+  statusHaramSub: "Forbidden",
+  statusDoubtfulSub: "Mushbooh",
+  statusNonFoodSub: "Barcode / Item",
+  statusUnknownSub: "Please scan a food product",
+  historyTitle: "Scan History",
+  noHistory: "No previous records",
+  manualInputTitle: "Manual Ingredient Input",
+  manualInputPlaceholder: "Paste ingredients here... (e.g., E120, Gelatin, Water, Sugar)",
+  manualInputHint: "You can type E-Numbers or ingredient names.",
+  analyzeTextBtn: "Analyze Text",
+  freeScansLeft: "Free",
+  proBadge: "Pro",
+  howItWorks: "How it works",
+  history: "History",
+  mainHint: "Scan Ingredients List (Best) or Search Barcode.",
+  btnCamera: "Camera",
+  btnGallery: "Gallery",
+  btnManual: "Type Ingredients",
+  selectedImages: "Selected Images",
+  deleteAll: "Delete All",
+  addImage: "Add Image",
+  analyzingText: "Analyzing text...",
+  moreImages: "more images",
+  confidence: "Confidence",
+  ingredientsDetected: "Detected Ingredients:",
+  noIngredientsFound: "No specific ingredients found",
+  analyzingDeep: "Deep Analyzing...",
+  analyzingDesc: "We are checking every ingredient precisely.",
+  analysisFailed: "Analysis Failed",
+  retry: "Retry",
+  retryHighCompression: "Retry (High Comp.)",
+  cancel: "Cancel",
+  scanImagesBtn: "Scan Images",
+  share: "Share",
+  newScan: "New Scan",
+  resultTitle: "Result:",
+  ingredientsDetails: "Ingredient Details:",
+  footerDisclaimer1: "This app uses AI and may make mistakes.",
+  footerDisclaimer2: "Always verify ingredients yourself.",
+  privacyPolicy: "Privacy Policy",
+  termsOfUse: "Terms of Use",
+  onboardingTitle1: "Smart Halal Scanner",
+  onboardingDesc1: "A smart tool to check food ingredients and ensure their Halal status in seconds.",
+  onboardingTitle2: "How to Use",
+  onboardingDesc2: "Best: Scan the **Ingredients List**. Product front also works.",
+  onboardingWarning: "Scanning barcodes only may fail",
+  onboardingTitle3: "Disclaimer",
+  readCarefully: "Please read carefully:",
+  disclaimer1: "This app uses AI, which can be right or wrong.",
+  disclaimer2: "Results are for assistance only, not a Fatwa.",
+  disclaimer3: "You are responsible for verifying the product.",
+  disclaimer4: "In doubt, look for a certified Halal logo.",
+  next: "Next",
+  agree: "I Understand & Agree",
+  subTitle: "Free Scans Used Up",
+  subTitlePro: "Unlock Pro Version",
+  subDesc: "Get unlimited access and higher accuracy",
+  featureSpeed: "Double Speed & Accuracy",
+  featureSpeedDesc: "Uses advanced AI models",
+  featureUnlimited: "Unlimited Scans",
+  featureUnlimitedDesc: "No daily limits on images",
+  featureSupport: "Support Development",
+  featureSupportDesc: "Help improve the app for Muslims",
+  choosePlan: "Choose a plan:",
+  monthlyPlan: "Monthly Subscription",
+  monthlyDesc: "Auto-renews, cancel anytime",
+  monthlyPrice: "$2.99",
+  month: "month",
+  lifetimePlan: "Lifetime Access",
+  lifetimeDesc: "One-time payment, no subscriptions",
+  lifetimePrice: "$12.99",
+  bestValue: "Best Value",
+  buyLifetime: "Buy Lifetime",
+  subscribeNow: "Subscribe Now",
+  restorePurchases: "Restore Purchases",
+  maxImages: "Max images reached",
+  onlyImages: "Please select images only",
+  unexpectedError: "Unexpected error occurred",
+  connectionError: "Connection error",
+  limitReachedError: "Free limit reached",
+  imageTooLarge: "Image too large",
+  shareText: "Halal Scan Result",
+  shareCopied: "Result copied to clipboard",
+  activating: "Activating...",
+  activated: "Pro version activated!",
+  privacyTitle: "Privacy Policy",
+  privacyContent: `
+  1. Data Collection:
+  We use the camera solely to analyze food ingredient images in real-time. Images are sent to our servers for processing and are not sold to third parties.
+  
+  2. Personal Data:
+  We do not collect personal data (like names or emails) unless you choose to create an optional account to save your history.
+  
+  3. Security:
+  We use advanced encryption technologies to protect your data during transmission.
+  
+  4. Disclaimer:
+  Results provided by the app are based on AI and may contain errors. The user is responsible for final verification.
+  `,
+  termsTitle: "Terms of Use",
+  termsContent: `
+  1. Acceptance of Terms:
+  By using this app, you agree to these terms. If you do not agree, please do not use the app.
+
+  2. Nature of Service:
+  This app is an assistive tool using Artificial Intelligence (AI) to analyze text and images. The results are for guidance only and do not constitute a final Fatwa or medical/dietary advice.
+
+  3. Disclaimer:
+  - We do not guarantee 100% accuracy. The system may misinterpret ingredients.
+  - The user bears full responsibility for verifying the product before consumption.
+  - Developers are not liable for any damages (physical, moral, or health-related) resulting from the use of the app.
+
+  4. Fair Use:
+  Illegal use or attempts to manipulate the service are prohibited. We reserve the right to ban any user misusing the service.
+
+  5. Amendments:
+  We may update these terms from time to time. Continued use of the app implies acceptance of the updated terms.
+  `,
+  closeBtn: "Close",
+  multiProductWarning: "You can add up to *4 images* for *one product* only.\nCapture images from different angles of the same product to show ingredients clearly.\nAnalysis of multiple products in one go is not supported.",
+  cameraTips: "Camera Tips",
+  coachTapTitle: "Tap Once: Capture single photo",
+  coachHoldTitle: "Long Press: Capture multiple photos",
+  coachAnglesTitle: "Use different angles for accuracy",
+  gotIt: "Got it, don't show again",
+  btnBarcode: "Barcode Search",
+  barcodeTitle: "Enter Barcode Number",
+  barcodePlaceholder: "E.g., 5000123456789",
+  searchBtn: "Search Product",
+  barcodeNotFound: "Product not found. Try scanning ingredients.",
+  searching: "Searching...",
+  productFound: "Product Found!",
+  // Settings & Cropper
+  settingsTitle: "Settings",
+  generalSettings: "General",
+  language: "Language",
+  notifications: "Notifications",
+  notificationsDesc: "Receive alerts when ingredient status changes.",
+  storage: "Storage",
+  clearHistory: "Clear History",
+  clearHistoryDesc: "Delete all previous scans from this device.",
+  clearHistoryConfirm: "History cleared successfully.",
+  subscription: "Subscription",
+  manageSubscription: "Manage Subscription",
+  appVersion: "App Version",
+  cropTitle: "Edit Image",
+  rotate: "Rotate",
+  crop: "Crop",
+  confirm: "Confirm",
+  reset: "Reset",
+  editImage: "Edit Image",
+  // Auth
+  authTitle: "My Account",
+  signIn: "Sign In",
+  signUp: "Create Account",
+  email: "Email",
+  password: "Password",
+  or: "OR",
+  continueWithGoogle: "Continue with Google",
+  continueWithApple: "Continue with Apple",
+  dontHaveAccount: "Don't have an account?",
+  alreadyHaveAccount: "Already have an account?",
+  authDesc: "Create an account to save your history, subscription, and sync data across devices.",
+  loggingIn: "Logging in...",
+  signingUp: "Signing up...",
+  invalidEmail: "Invalid Email",
+  weakPassword: "Password must be at least 6 characters",
+  loginSuccess: "Logged in successfully",
+  signupSuccess: "Account created! Please verify your email.",
+  signOut: "Sign Out",
+  exitApp: "Exit App",
+  guest: "Guest",
+  profile: "Profile",
+  // Reporting
+  reportError: "Incorrect Result?",
+  reportTitle: "Report Error",
+  reportDesc: "Your contribution helps us improve accuracy for everyone.",
+  correctStatus: "What is the correct status?",
+  notes: "Additional Notes (Optional)",
+  notesPlaceholder: "Explain why... (e.g. contains E120)",
+  sendReport: "Send Report",
+  reportSent: "Thank you! Report received."
+};
+
+export default en;

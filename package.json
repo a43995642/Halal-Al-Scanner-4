@@ -1,0 +1,58 @@
+{
+  "name": "halal-scanner",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A React application that uses Gemini AI to scan food ingredients and determine if they are Halal, Haram, or Doubtful.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "cap:sync": "cap sync",
+    "cap:open": "cap open android",
+    "ensure-android": "node scripts/ensure-android-structure.js",
+    "set-icon": "node scripts/set-android-icon.js",
+    "clean-setup": "rm -rf node_modules package-lock.json android && npm install && npm run build && npx cap add android && npx cap sync",
+    "setup-android": "npx cap telemetry off && (npx cap add android || echo 'Android platform already exists')",
+    "fix-gradle": "node scripts/fix-gradle-wrapper.js",
+    "force-java": "node scripts/force-java-compatibility.js",
+    "fix-android": "sh scripts/fix-android.sh",
+    "build-apk": "npm run get-sha1 && rm -rf android && npm install && npm run setup-android && npm run fix-gradle && npm run force-java && npm run ensure-android && npm run build && npx cap sync && npm run set-icon && node update-manifest.js && node scripts/smart-build.js",
+    "build-release": "npm run get-sha1 && npm run build && npx cap sync && npm run set-icon && node update-manifest.js && cd android && chmod +x gradlew && ./gradlew clean bundleRelease",
+    "sha1-win": "keytool -list -v -keystore \"%USERPROFILE%\\.android\\debug.keystore\" -alias androiddebugkey -storepass android -keypass android",
+    "sha1-mac": "keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android",
+    "get-sha1": "node scripts/get-sha1.js"
+  },
+  "engines": {
+    "node": ">=18.x"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/camera": "^6.0.0",
+    "@codetrix-studio/capacitor-google-auth": "^3.3.0",
+    "@google/genai": "^1.0.0",
+    "@supabase/supabase-js": "^2.39.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.4"
+  },
+  "overrides": {
+    "@codetrix-studio/capacitor-google-auth": {
+      "@capacitor/core": "^6.0.0"
+    }
+  }
+}

@@ -1,11 +1,30 @@
-<div align="center">
+# Halal Scanner
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+This project is a mobile-first application built with:
+- **React + TypeScript**
+- **Vite**
+- **Capacitor (Android)**
+- **Google Authentication**
+- **AI-based product analysis (Gemini)**
 
-  <h1>Built with AI Studio</h2>
+## Getting Started
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+### Prerequisites
+- Node.js >= 18
+- Java JDK 17 (for Android builds)
+- Android Studio (optional, for debugging)
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+### Installation
+```bash
+npm install
+```
 
-</div>
+### Development (Web)
+```bash
+npm run dev
+```
+
+### Build Android APK
+```bash
+npm run build-apk
+```
