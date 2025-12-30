@@ -2,7 +2,7 @@
 import { exec } from 'child_process';
 import { homedir } from 'os';
 import { join, resolve } from 'path';
-import { existsSync, mkdirSync, copyFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, copyFileSync, writeFileSync, unlinkSync } from 'fs';
 
 console.log('\n🔐 Managing Android Keystore for Consistent Signing...\n');
 
@@ -30,15 +30,42 @@ const runCommand = (cmd) => {
 };
 
 const main = async () => {
-    // 1. Check if we already have a stable keystore in the PROJECT ROOT
+    // 0. Validate existing keystore if present
+    if (existsSync(projectKeystorePath)) {
+        try {
+            // Try to list keys to check if file is valid
+            await runCommand(`keytool -list -keystore "${projectKeystorePath}" -storepass android`);
+            console.log('✅ Found valid debug.keystore in project root.');
+        } catch (e) {
+            console.log('⚠️ Found CORRUPTED or INVALID debug.keystore. Deleting to regenerate...');
+            try {
+                unlinkSync(projectKeystorePath);
+            } catch (delErr) {
+                console.error('❌ Could not delete corrupted file. Please delete debug.keystore manually.');
+                process.exit(1);
+            }
+        }
+    }
+
+    // 1. Generate or Import if missing
     if (!existsSync(projectKeystorePath)) {
         console.log('⚠️ No stable keystore found in project root. Checking system...');
         
         // If user has one in system (e.g. local dev), import it to project
         if (existsSync(systemKeystorePath)) {
-            console.log('📥 Importing system debug.keystore to project root...');
-            copyFileSync(systemKeystorePath, projectKeystorePath);
-        } else {
+            // Check if system one is valid too
+            try {
+                 await runCommand(`keytool -list -keystore "${systemKeystorePath}" -storepass android`);
+                 console.log('📥 Importing system debug.keystore to project root...');
+                 copyFileSync(systemKeystorePath, projectKeystorePath);
+            } catch (e) {
+                console.log('⚠️ System keystore is also invalid. Generating fresh one...');
+                // Fallthrough to generation
+            }
+        }
+        
+        // If still missing (was invalid or didn't exist)
+        if (!existsSync(projectKeystorePath)) {
             console.log('🆕 Generating NEW stable debug.keystore in project root...');
             try {
                 await runCommand(`keytool -genkey -v -keystore "${projectKeystorePath}" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"`);
@@ -48,8 +75,6 @@ const main = async () => {
                 process.exit(1);
             }
         }
-    } else {
-        console.log('✅ Found stable debug.keystore in project root.');
     }
 
     // 2. Sync Project Keystore -> System Keystore (Crucial for CI/CD and Gradle)
@@ -57,8 +82,13 @@ const main = async () => {
         mkdirSync(systemAndroidDir, { recursive: true });
     }
     
+    // Always overwrite system keystore with our project one to ensure consistency
     console.log('🔄 Syncing keystore to system path for Gradle build...');
-    copyFileSync(projectKeystorePath, systemKeystorePath);
+    try {
+        copyFileSync(projectKeystorePath, systemKeystorePath);
+    } catch (e) {
+        console.warn('⚠️ Could not sync to system folder (permission error?). Gradle might use a different key.');
+    }
 
     // 3. Extract and Print SHA-1
     console.log('\n🔑 Extracting SHA-1 Fingerprint from PROJECT keystore...\n');
