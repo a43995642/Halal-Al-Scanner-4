@@ -172,6 +172,12 @@ const ar: TranslationDictionary = {
   confirm: "تأكيد",
   reset: "إعادة ضبط",
   editImage: "تعديل الصورة",
+  // Account Deletion
+  deleteAccount: "حذف الحساب",
+  deleteAccountDesc: "حذف حسابك وجميع بياناتك نهائياً.",
+  deleteAccountConfirm: "هل أنت متأكد؟ سيتم حذف جميع بياناتك وسجلك نهائياً ولا يمكن التراجع عن هذا الإجراء.",
+  deleteAccountSuccess: "تم تقديم طلب حذف الحساب بنجاح. سيتم حذف البيانات خلال 30 يوماً.",
+  dangerZone: "منطقة الخطر",
   // Auth
   authTitle: "حسابي",
   signIn: "تسجيل الدخول",

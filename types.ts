@@ -175,6 +175,12 @@ export interface TranslationDictionary {
   confirm: string;
   reset: string;
   editImage: string;
+  // Account Deletion (Google Play Requirement)
+  deleteAccount: string;
+  deleteAccountDesc: string;
+  deleteAccountConfirm: string;
+  deleteAccountSuccess: string;
+  dangerZone: string;
   // Auth
   authTitle: string;
   signIn: string;
@@ -194,7 +200,7 @@ export interface TranslationDictionary {
   loginSuccess: string;
   signupSuccess: string;
   signOut: string;
-  exitApp: string; // New Key
+  exitApp: string;
   guest: string;
   profile: string;
   // Reporting

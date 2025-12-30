@@ -172,6 +172,12 @@ const en: TranslationDictionary = {
   confirm: "Confirm",
   reset: "Reset",
   editImage: "Edit Image",
+  // Account Deletion
+  deleteAccount: "Delete Account",
+  deleteAccountDesc: "Permanently delete your account and data.",
+  deleteAccountConfirm: "Are you sure? This will permanently delete your data and cannot be undone.",
+  deleteAccountSuccess: "Account deletion requested. Data will be removed within 30 days.",
+  dangerZone: "Danger Zone",
   // Auth
   authTitle: "My Account",
   signIn: "Sign In",

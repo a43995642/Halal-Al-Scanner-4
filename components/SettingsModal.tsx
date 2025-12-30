@@ -7,6 +7,19 @@ import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 
+// Reusing URL logic from geminiService to ensure consistency
+const VERCEL_PROJECT_URL = 'https://halal-al-scanner-2.vercel.app'; 
+const getBaseUrl = () => {
+  if (Capacitor.isNativePlatform()) return VERCEL_PROJECT_URL.replace(/\/$/, '');
+  if (typeof window !== 'undefined') {
+     const host = window.location.hostname;
+     if (host === 'localhost' || host.startsWith('192.168') || host.startsWith('10.')) {
+        return VERCEL_PROJECT_URL.replace(/\/$/, '');
+     }
+  }
+  return '';
+};
+
 interface SettingsModalProps {
   onClose: () => void;
   onClearHistory: () => void;
@@ -68,6 +81,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onClearHi
         // Even if error, force reload to ensure clean state
         window.location.reload();
       }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user || user.role !== 'authenticated') return;
+
+    if (confirm(t.deleteAccountConfirm)) {
+        setIsSigningOut(true);
+        try {
+            // 1. Send deletion request/report to server
+            // Since we can't delete users client-side without Admin API, we send a 'report' 
+            // of type 'DELETE_ACCOUNT' or similar. 
+            // We reuse the /api/report endpoint logic for simplicity, or just use a flag.
+            
+            const baseUrl = getBaseUrl();
+            await fetch(`${baseUrl}/api/report`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    originalText: 'ACCOUNT DELETION REQUEST',
+                    userCorrection: 'DELETE_ACCOUNT', 
+                    userNotes: 'User requested account deletion via app settings.'
+                })
+            });
+
+            // 2. Clear local data
+            onClearHistory();
+            localStorage.clear();
+
+            // 3. Sign Out
+            await supabase.auth.signOut();
+             try { await GoogleAuth.signOut(); } catch (e) {}
+
+            alert(t.deleteAccountSuccess);
+            window.location.reload();
+
+        } catch (e) {
+            console.error("Delete Account Error", e);
+            alert(t.connectionError);
+            setIsSigningOut(false);
+        }
+    }
   };
 
   const handleExitApp = async () => {
@@ -254,13 +309,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onClearHi
             </div>
           </div>
 
-          {/* EXIT APP BUTTON (New) */}
-          <div className="pt-2">
+          {/* DANGER ZONE - DELETE ACCOUNT (Google Play Requirement) */}
+          {user && user.role === 'authenticated' && (
+             <div>
+                <h3 className="text-xs font-bold text-red-600 mb-3 px-2 uppercase tracking-widest">{t.dangerZone}</h3>
+                <div className="bg-red-950/20 rounded-2xl overflow-hidden border border-red-900/30 p-4 flex justify-between items-center">
+                   <div className="flex items-center gap-3">
+                       <div className="w-9 h-9 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center border border-red-600/10">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.008v.008H12v-.008z" />
+                          </svg>
+                       </div>
+                       <div>
+                          <p className="font-bold text-red-400 text-sm">{t.deleteAccount}</p>
+                          <p className="text-xs text-gray-500">{t.deleteAccountDesc}</p>
+                       </div>
+                   </div>
+                   <button 
+                     onClick={handleDeleteAccount}
+                     disabled={isSigningOut}
+                     className="text-xs font-bold text-white bg-red-600 px-4 py-2 rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-900/30"
+                   >
+                     {t.deleteAccount}
+                   </button>
+                </div>
+             </div>
+          )}
+
+          {/* EXIT APP BUTTON */}
+          <div className="pt-2 pb-4">
              <button 
                onClick={handleExitApp}
-               className="w-full text-xs font-bold text-gray-500 hover:text-white bg-white/5 hover:bg-red-500/20 p-3 rounded-xl transition flex items-center justify-center gap-2 group"
+               className="w-full text-xs font-bold text-gray-500 hover:text-white bg-white/5 hover:bg-white/10 p-3 rounded-xl transition flex items-center justify-center gap-2 group"
              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 group-hover:text-red-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
                 </svg>
                 {t.exitApp}
