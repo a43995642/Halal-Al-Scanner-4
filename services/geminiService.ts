@@ -3,8 +3,8 @@ import { HalalStatus, ScanResult, Language } from "../types";
 import { Capacitor } from '@capacitor/core';
 import { checkLocalHaram } from "./haramKeywords";
 
-// ⚠️ هام: تأكد من أن هذا الرابط يطابق رابط مشروعك على Vercel
-// IMPORTANT: This URL must match your deployed Vercel project
+// ⚠️ هام: بعد رفع المشروع على Vercel، انسخ الرابط الجديد وضعه هنا بدلاً من الرابط القديم
+// هذا الرابط يستخدم فقط عند بناء تطبيق Android (APK) لكي يتصل بالخادم
 const VERCEL_PROJECT_URL = 'https://halal-al-scanner-2.vercel.app'; 
 
 const getBaseUrl = () => {
@@ -18,12 +18,14 @@ const getBaseUrl = () => {
   if (typeof window !== 'undefined') {
      const host = window.location.hostname;
      if (host === 'localhost' || host.startsWith('192.168') || host.startsWith('127.0') || host.startsWith('10.')) {
+        // Optional: You can change this to http://localhost:3000/api if running backend locally
         console.log("Local Dev detected: Using remote API", VERCEL_PROJECT_URL);
         return VERCEL_PROJECT_URL.replace(/\/$/, '');
      }
   }
 
   // 3. Production Web (running on Vercel) -> Use relative path
+  // This ensures the web app always works on whatever domain it is deployed to
   return '';
 };
 
