@@ -4,15 +4,13 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="./icon.png?v=3" />
     <link rel="apple-touch-icon" href="./icon.png?v=3">
-    <!-- Updated Viewport: Added user-scalable=no and maximum-scale=1.0 to prevent zooming inside WebView -->
+    <!-- Viewport: Prevent zooming for native app feel -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
-    <!-- Google Sign-In Client ID for Web/PWA -->
-    <!-- This MUST match the serverClientId in capacitor.config.ts -->
+    <!-- Google Sign-In Client ID -->
     <meta name="google-signin-client_id" content="565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com">
 
-    <!-- Security: Content Security Policy -->
-    <!-- ⚠️ FIXED: Added https://halal-al-scanner-2.vercel.app to connect-src to allow API calls from Android App -->
+    <!-- Content Security Policy -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self'; 
       script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://accounts.google.com https://apis.google.com; 
@@ -24,23 +22,9 @@
       worker-src 'self' blob:;
     ">
 
-    <!-- iOS specific meta tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="HalalScan">
-
-    <!-- Android specific meta tags -->
     <meta name="theme-color" content="#059669">
     <meta name="mobile-web-app-capable" content="yes">
-
-    <!-- App Description for SEO and Metadata -->
-    <meta name="description" content="A React application that uses Gemini AI to scan food ingredients and determine if they are Halal, Haram, or Doubtful.">
-    
-    <!-- Open Graph Image -->
-    <meta property="og:image" content="./icon.png?v=3" />
-
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="./manifest.json?v=3">
+    <meta name="description" content="Halal Scanner AI">
 
     <title>Halal AI Scanner</title>
     
@@ -51,115 +35,56 @@
         darkMode: 'class',
         theme: {
           extend: {
-            fontFamily: {
-              sans: ['Cairo', 'sans-serif'],
-            },
-            colors: {
-              emerald: {
-                50: '#ecfdf5',
-                100: '#d1fae5',
-                500: '#10b981',
-                600: '#059669',
-                700: '#047857',
-              }
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              slideUp: {
-                '0%': { transform: 'translateY(20px)', opacity: '0' },
-                '100%': { transform: 'translateY(0)', opacity: '1' },
-              },
-              scan: {
-                '0%': { top: '0%', opacity: '0' },
-                '10%': { opacity: '1' },
-                '90%': { opacity: '1' },
-                '100%': { top: '100%', opacity: '0' },
-              }
-            },
+            fontFamily: { sans: ['Cairo', 'sans-serif'] },
             animation: {
               'fade-in': 'fadeIn 0.5s ease-out',
               'slide-up': 'slideUp 0.5s ease-out',
               'scan': 'scan 2s linear infinite',
+            },
+            keyframes: {
+              fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+              slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+              scan: { '0%': { top: '0%', opacity: '0' }, '10%': { opacity: '1' }, '90%': { opacity: '1' }, '100%': { top: '100%', opacity: '0' } }
             }
           },
         },
       }
     </script>
-    <script>
-      // Initialize theme to prevent flash
-      try {
-        if (localStorage.getItem('halalScannerTheme') === 'dark' || (!('halalScannerTheme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark')
-        } else {
-          document.documentElement.classList.remove('dark')
-        }
-      } catch (_) {}
-    </script>
     <style>
-      /* Native App Feel - CSS Resets */
-      body {
-        /* Prevent pull-to-refresh and rubber banding */
-        overscroll-behavior-y: none;
-        /* Prevent text selection like a native app */
-        -webkit-user-select: none;
-        user-select: none;
-        /* Prevent long-press context menus */
-        -webkit-touch-callout: none;
-      }
-      
-      /* Re-enable text selection for input fields only */
-      input, textarea {
-        -webkit-user-select: text;
-        user-select: text;
-      }
-
-      /* Remove tap highlight color on mobile */
-      * {
-        -webkit-tap-highlight-color: transparent;
-      }
+      body { overscroll-behavior-y: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+      input, textarea { -webkit-user-select: text; user-select: text; }
     </style>
 <script type="importmap">
 {
   "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "vite": "https://esm.sh/vite@^7.3.0",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
     "@capacitor/core": "https://esm.sh/@capacitor/core@^8.0.0",
+    "@codetrix-studio/capacitor-google-auth": "https://esm.sh/@codetrix-studio/capacitor-google-auth@^3.4.0-rc.4",
     "@capacitor/app": "https://esm.sh/@capacitor/app@^8.0.0",
+    "@capacitor/camera": "https://esm.sh/@capacitor/camera@^8.0.0",
+    "vite": "https://esm.sh/vite@^7.3.0",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "fs": "https://esm.sh/fs@^0.0.1-security",
-    "@capacitor/cli": "https://esm.sh/@capacitor/cli@^8.0.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.89.0",
     "path": "https://esm.sh/path@^0.12.7",
     "url": "https://esm.sh/url@^0.11.4",
+    "@capacitor/cli": "https://esm.sh/@capacitor/cli@^8.0.0",
     "child_process": "https://esm.sh/child_process@^1.0.2",
-    "os": "https://esm.sh/os@^0.1.2",
-    "@capacitor/camera": "https://esm.sh/@capacitor/camera@^8.0.0",
-    "@codetrix-studio/capacitor-google-auth": "https://esm.sh/@codetrix-studio/capacitor-google-auth@^3.4.0-rc.4"
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.89.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "os": "https://esm.sh/os@^0.1.2"
   }
 }
 </script>
 </head>
   <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans min-h-screen">
     <div id="root"></div>
-    <!-- Use relative path for script to support file:// protocol and subpaths -->
     <script type="module" src="./index.tsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Use relative path for service worker
-          navigator.serviceWorker.register('./service-worker.js')
-            .then(registration => {
-              console.log('ServiceWorker registration successful');
-            })
-            .catch(err => {
-              console.log('ServiceWorker registration failed: ', err);
-            });
+          navigator.serviceWorker.register('./service-worker.js').catch(err => console.log('SW failed', err));
         });
       }
     </script>
