@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import packageJson from '../../package.json'; // Import version
 
 // Reusing URL logic from geminiService to ensure consistency
 const VERCEL_PROJECT_URL = 'https://halal-al-scanner-2.vercel.app'; 
@@ -351,7 +352,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onClearHi
 
           <div className="text-center pt-2">
              <p className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">
-               {t.appVersion} 2.1.0 (Build 2024)
+               {t.appVersion} {packageJson.version} (Build 2025)
              </p>
           </div>
 

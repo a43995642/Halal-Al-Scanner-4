@@ -1,7 +1,8 @@
+
 {
   "name": "halal-scanner",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "A React application that uses Gemini AI to scan food ingredients and determine if they are Halal, Haram, or Doubtful.",
   "type": "module",
   "scripts": {

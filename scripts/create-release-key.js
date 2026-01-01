@@ -1,12 +1,13 @@
 
 import { exec } from 'child_process';
-import { existsSync, writeFileSync } from 'fs';
+import { existsSync, writeFileSync, readFileSync } from 'fs';
 import { join, resolve } from 'path';
 
 const projectRoot = resolve();
 const androidAppDir = join(projectRoot, 'android', 'app');
 const keystorePath = join(androidAppDir, 'release.keystore');
 const propertiesPath = join(projectRoot, 'android', 'keystore.properties');
+const buildGradlePath = join(androidAppDir, 'build.gradle');
 
 const ALIAS = 'halalscan-release';
 const PASS = 'halal-scanner-secure-pass'; // In a real app, ask user or use env var.
@@ -18,6 +19,61 @@ const runCommand = (cmd) => {
             resolve(stdout);
         });
     });
+};
+
+const patchBuildGradle = () => {
+    console.log('🔧 Patching android/app/build.gradle with signing config...');
+    
+    if (!existsSync(buildGradlePath)) {
+        console.error('❌ build.gradle not found!');
+        return;
+    }
+
+    let content = readFileSync(buildGradlePath, 'utf-8');
+    let modified = false;
+
+    // 1. Add keystore.properties loader if missing
+    const loaderCode = `
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+`;
+    if (!content.includes('def keystoreProperties = new Properties()')) {
+        content = loaderCode + content;
+        modified = true;
+    }
+
+    // 2. Add Signing Config block
+    const signingBlock = `
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
+    }`;
+
+    if (!content.includes('signingConfigs {') && content.includes('buildTypes {')) {
+        content = content.replace('buildTypes {', `signingConfigs {\n        release {\n            keyAlias keystoreProperties['keyAlias']\n            keyPassword keystoreProperties['keyPassword']\n            storeFile file(keystoreProperties['storeFile'])\n            storePassword keystoreProperties['storePassword']\n        }\n    }\n    buildTypes {`);
+        modified = true;
+    }
+
+    // 3. Apply signing config to release build type
+    if (content.includes('buildTypes {') && content.includes('release {') && !content.includes('signingConfig signingConfigs.release')) {
+        // Look for release block and inject signingConfig
+        content = content.replace(/release\s*{/, 'release {\n            signingConfig signingConfigs.release');
+        modified = true;
+    }
+
+    if (modified) {
+        writeFileSync(buildGradlePath, content);
+        console.log('✅ build.gradle patched successfully with release signing!');
+    } else {
+        console.log('👍 build.gradle already has signing configuration.');
+    }
 };
 
 const main = async () => {
@@ -46,7 +102,10 @@ const main = async () => {
         console.log('✅ Created android/keystore.properties');
     }
 
-    // 3. Extract and Print SHA-1 (CRITICAL FOR GOOGLE LOGIN IN PRODUCTION)
+    // 3. Patch Gradle File
+    patchBuildGradle();
+
+    // 4. Extract and Print SHA-1 (CRITICAL FOR GOOGLE LOGIN IN PRODUCTION)
     console.log('\n📢 EXTRACTING RELEASE SHA-1 FINGERPRINT...');
     try {
         const stdout = await runCommand(`keytool -list -v -keystore "${keystorePath}" -alias ${ALIAS} -storepass ${PASS}`);
