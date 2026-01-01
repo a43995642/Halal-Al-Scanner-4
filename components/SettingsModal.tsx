@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import packageJson from '../../package.json'; // Import version
+import packageJson from '../package.json'; // Fixed import path
 
 // Reusing URL logic from geminiService to ensure consistency
 const VERCEL_PROJECT_URL = 'https://halal-al-scanner-2.vercel.app'; 
