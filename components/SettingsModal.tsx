@@ -27,9 +27,19 @@ interface SettingsModalProps {
   isPremium: boolean;
   onManageSubscription: () => void;
   onOpenAuth: () => void;
+  onOpenPrivacy: () => void;
+  onOpenTerms: () => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onClearHistory, isPremium, onManageSubscription, onOpenAuth }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ 
+  onClose, 
+  onClearHistory, 
+  isPremium, 
+  onManageSubscription, 
+  onOpenAuth,
+  onOpenPrivacy,
+  onOpenTerms
+}) => {
   const { t, language, setLanguage } = useLanguage();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [user, setUser] = useState<any | null>(null); // Changed User to any
@@ -310,6 +320,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onClearHi
             </div>
           </div>
 
+          {/* ABOUT & LEGAL */}
+          <div>
+            <h3 className="text-xs font-bold text-gray-500 mb-3 px-2 uppercase tracking-widest">{t.appVersion} & Legal</h3>
+            <div className="bg-black/20 rounded-2xl overflow-hidden border border-white/5 divide-y divide-white/5">
+                <button onClick={onOpenPrivacy} className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition">
+                    <span className="text-sm font-medium text-white">{t.privacyPolicy}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-4 h-4 text-gray-500 ${language === 'ar' ? 'rotate-180' : ''}`}>
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                </button>
+                <button onClick={onOpenTerms} className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition">
+                    <span className="text-sm font-medium text-white">{t.termsOfUse}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-4 h-4 text-gray-500 ${language === 'ar' ? 'rotate-180' : ''}`}>
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                </button>
+                <div className="p-4 flex items-center justify-between">
+                   <span className="text-sm font-medium text-white">{t.appVersion}</span>
+                   <span className="text-xs text-gray-400 font-mono">{packageJson.version}</span>
+                </div>
+            </div>
+          </div>
+
           {/* DANGER ZONE - DELETE ACCOUNT (Google Play Requirement) */}
           {user && user.role === 'authenticated' && (
              <div>
@@ -348,12 +381,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onClearHi
                 </svg>
                 {t.exitApp}
              </button>
-          </div>
-
-          <div className="text-center pt-2">
-             <p className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">
-               {t.appVersion} {packageJson.version} (Build 2025)
-             </p>
           </div>
 
         </div>
