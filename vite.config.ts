@@ -8,13 +8,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Custom plugin to copy root assets (icon.png, manifest.json) to dist/
+// Custom plugin to copy root assets (icon.png, manifest.json, privacy.html) to dist/
 // This allows the user to upload files to the root without creating a 'public' folder manually.
 const copyRootAssets = () => {
   return {
     name: 'copy-root-assets',
     closeBundle: async () => {
-      const filesToCopy = ['icon.png', 'manifest.json', 'service-worker.js'];
+      // Added 'privacy.html' to the list
+      const filesToCopy = ['icon.png', 'manifest.json', 'service-worker.js', 'privacy.html'];
       const distDir = path.resolve(__dirname, 'dist');
       
       if (!fs.existsSync(distDir)) return;
