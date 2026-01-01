@@ -6,11 +6,10 @@ import { LanguageProvider } from './contexts/LanguageContext';
 
 // --- FAIL-SAFE: Privacy Page Redirect ---
 // If React loads on the privacy path, it means the Service Worker or Routing messed up.
-// We force a hard reload bypassing the Service Worker.
 if (window.location.pathname.includes('privacy.html') || window.location.pathname === '/privacy') {
-  console.warn("SPA loaded on privacy page. Redirecting to static file...");
+  console.warn("SPA loaded on privacy page. Cleaning up...");
   
-  // Unregister SW to fix the root cause for next time
+  // 1. Unregister SW
   if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for(let registration of registrations) {
@@ -19,14 +18,29 @@ if (window.location.pathname.includes('privacy.html') || window.location.pathnam
       });
   }
 
-  // If we are already in a loop, stop
-  if (!window.location.search.includes('v=')) {
-     // Force network fetch by appending a timestamp
-     window.location.href = '/privacy.html?v=' + Date.now();
-  } else {
-     // If still failing, just show a basic fallback in document body
-     document.body.innerHTML = '<div style="padding:20px;text-align:center;"><h1>Privacy Policy Loading...</h1><a href="/privacy.html?v=' + Date.now() + '">Click here if not redirected</a></div>';
+  // 2. Clear Caches
+  if ('caches' in window) {
+      caches.keys().then((names) => {
+          names.forEach((name) => {
+              caches.delete(name);
+          });
+      });
   }
+
+  // 3. Force Reload with cache busting
+  if (!window.location.search.includes('v=')) {
+     const separator = window.location.href.includes('?') ? '&' : '?';
+     window.location.href = window.location.href + separator + 'v=' + Date.now();
+  } else {
+     document.body.innerHTML = `
+        <div style="padding:20px;text-align:center;font-family:sans-serif;">
+            <h1>جاري تحميل سياسة الخصوصية...</h1>
+            <p>Loading Privacy Policy...</p>
+            <a href="/privacy.html?t=${Date.now()}" style="color:blue;text-decoration:underline;">اضغط هنا إذا لم يتم التحويل / Click here</a>
+        </div>
+     `;
+  }
+  
   // Stop React from mounting
   throw new Error("Redirecting to Privacy Policy"); 
 }

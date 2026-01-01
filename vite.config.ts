@@ -8,13 +8,13 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Custom plugin to copy root assets (icon.png, manifest.json) to dist/
+// Custom plugin to copy root assets (icon.png, manifest.json, privacy.html) to dist/
 const copyRootAssets = () => {
   return {
     name: 'copy-root-assets',
     closeBundle: async () => {
-      // Removed privacy.html from here because it's now handled by rollupOptions.input below
-      const filesToCopy = ['icon.png', 'manifest.json', 'service-worker.js'];
+      // Added privacy.html here to ensure it is copied exactly as is
+      const filesToCopy = ['icon.png', 'manifest.json', 'service-worker.js', 'privacy.html'];
       const distDir = path.resolve(__dirname, 'dist');
       
       if (!fs.existsSync(distDir)) return;
@@ -48,7 +48,7 @@ export default defineConfig(() => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          privacy: path.resolve(__dirname, 'privacy.html') // Treat privacy.html as a separate entry point
+          // Removed privacy from here, handled by copyRootAssets now
         }
       }
     },
