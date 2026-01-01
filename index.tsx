@@ -4,6 +4,34 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { LanguageProvider } from './contexts/LanguageContext';
 
+// --- FAIL-SAFE: Privacy Page Redirect ---
+// If React loads on the privacy path, it means the Service Worker or Routing messed up.
+// We force a hard reload bypassing the Service Worker.
+if (window.location.pathname.includes('privacy.html') || window.location.pathname === '/privacy') {
+  console.warn("SPA loaded on privacy page. Redirecting to static file...");
+  
+  // Unregister SW to fix the root cause for next time
+  if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+              registration.unregister();
+          }
+      });
+  }
+
+  // If we are already in a loop, stop
+  if (!window.location.search.includes('v=')) {
+     // Force network fetch by appending a timestamp
+     window.location.href = '/privacy.html?v=' + Date.now();
+  } else {
+     // If still failing, just show a basic fallback in document body
+     document.body.innerHTML = '<div style="padding:20px;text-align:center;"><h1>Privacy Policy Loading...</h1><a href="/privacy.html?v=' + Date.now() + '">Click here if not redirected</a></div>';
+  }
+  // Stop React from mounting
+  throw new Error("Redirecting to Privacy Policy"); 
+}
+// ----------------------------------------
+
 interface ErrorBoundaryProps {
   children?: ReactNode;
 }

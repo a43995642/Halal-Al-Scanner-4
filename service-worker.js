@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'halal-scanner-v2';
+const CACHE_NAME = 'halal-scanner-v3'; // Bumped version to invalidate old cache
 const urlsToCache = [
   '/',
   '/index.html',
@@ -10,6 +10,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting(); // Force new SW to take control immediately
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -23,7 +24,8 @@ self.addEventListener('fetch', (event) => {
   if (
     event.request.url.includes('generativelanguage.googleapis.com') || 
     event.request.url.includes('/api/') ||
-    event.request.url.includes('privacy.html') // Force network for privacy page
+    event.request.url.includes('privacy.html') || // Force network for privacy page
+    event.request.url.includes('/privacy')        // Handle clean URLs too
   ) {
     return;
   }
@@ -42,7 +44,6 @@ self.addEventListener('fetch', (event) => {
             const responseToCache = response.clone();
             caches.open(CACHE_NAME)
               .then((cache) => {
-                // Don't cache broad ranges if not needed, but here we cache visited pages
                 cache.put(event.request, responseToCache);
               });
             return response;
@@ -59,10 +60,11 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim()) // Take control of all clients immediately
   );
 });

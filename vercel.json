@@ -1,7 +1,11 @@
+
 {
   "framework": "vite",
+  "cleanUrls": true,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/privacy.html", "destination": "/privacy.html" },
     { "source": "/((?!api/.*|.*\\..*).*)", "destination": "/index.html" }
   ],
   "functions": {
