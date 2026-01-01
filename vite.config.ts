@@ -8,14 +8,13 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Custom plugin to copy root assets (icon.png, manifest.json, privacy.html) to dist/
-// This allows the user to upload files to the root without creating a 'public' folder manually.
+// Custom plugin to copy root assets (icon.png, manifest.json) to dist/
 const copyRootAssets = () => {
   return {
     name: 'copy-root-assets',
     closeBundle: async () => {
-      // Added 'privacy.html' to the list
-      const filesToCopy = ['icon.png', 'manifest.json', 'service-worker.js', 'privacy.html'];
+      // Removed privacy.html from here because it's now handled by rollupOptions.input below
+      const filesToCopy = ['icon.png', 'manifest.json', 'service-worker.js'];
       const distDir = path.resolve(__dirname, 'dist');
       
       if (!fs.existsSync(distDir)) return;
@@ -45,7 +44,13 @@ export default defineConfig(() => {
     build: {
       outDir: 'dist',
       emptyOutDir: true,
-      sourcemap: false
+      sourcemap: false,
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          privacy: path.resolve(__dirname, 'privacy.html') // Treat privacy.html as a separate entry point
+        }
+      }
     },
     server: {
       port: 3000,

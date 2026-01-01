@@ -19,11 +19,11 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // For API calls (Gemini), strictly use Network
-  // Also exclude our own backend API from caching to avoid POST method issues
+  // For API calls (Gemini) and Privacy Policy, strictly use Network
   if (
     event.request.url.includes('generativelanguage.googleapis.com') || 
-    event.request.url.includes('/api/')
+    event.request.url.includes('/api/') ||
+    event.request.url.includes('privacy.html') // Force network for privacy page
   ) {
     return;
   }
