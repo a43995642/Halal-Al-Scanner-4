@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 // Configuration
@@ -18,7 +19,8 @@ export default async function handler(request, response) {
   )) {
     response.setHeader('Access-Control-Allow-Origin', origin);
   } else {
-    response.setHeader('Access-Control-Allow-Origin', 'https://halal-al-scanner-2.vercel.app');
+    // UPDATED to scanner-4
+    response.setHeader('Access-Control-Allow-Origin', 'https://halal-al-scanner-4.vercel.app');
   }
 
   response.setHeader('Access-Control-Allow-Credentials', 'true');

@@ -5,7 +5,7 @@ import { checkLocalHaram } from "./haramKeywords";
 
 // ⚠️ هام: بعد رفع المشروع على Vercel، انسخ الرابط الجديد وضعه هنا بدلاً من الرابط القديم
 // هذا الرابط يستخدم فقط عند بناء تطبيق Android (APK) لكي يتصل بالخادم
-const VERCEL_PROJECT_URL = 'https://halal-al-scanner-2.vercel.app'; 
+const VERCEL_PROJECT_URL = 'https://halal-al-scanner-4.vercel.app'; 
 
 const getBaseUrl = () => {
   // 1. Native App (Android/iOS) -> Must use full URL

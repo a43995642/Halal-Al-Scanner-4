@@ -5,7 +5,7 @@ import { HalalStatus, ScanResult } from '../types';
 import { Capacitor } from '@capacitor/core';
 
 // Reusing URL logic from geminiService to ensure consistency
-const VERCEL_PROJECT_URL = 'https://halal-al-scanner-2.vercel.app'; 
+const VERCEL_PROJECT_URL = 'https://halal-al-scanner-4.vercel.app'; 
 const getBaseUrl = () => {
   if (Capacitor.isNativePlatform()) return VERCEL_PROJECT_URL.replace(/\/$/, '');
   if (typeof window !== 'undefined') {
