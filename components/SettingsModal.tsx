@@ -100,28 +100,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (confirm(t.deleteAccountConfirm)) {
         setIsSigningOut(true);
         try {
-            // 1. Send deletion request/report to server
-            // Since we can't delete users client-side without Admin API, we send a 'report' 
-            // of type 'DELETE_ACCOUNT' or similar. 
-            // We reuse the /api/report endpoint logic for simplicity, or just use a flag.
-            
+            // 1. Send deletion request to dedicated API
             const baseUrl = getBaseUrl();
-            await fetch(`${baseUrl}/api/report`, {
+            const response = await fetch(`${baseUrl}/api/delete-account`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user.id,
-                    originalText: 'ACCOUNT DELETION REQUEST',
-                    userCorrection: 'DELETE_ACCOUNT', 
-                    userNotes: 'User requested account deletion via app settings.'
-                })
+                body: JSON.stringify({ userId: user.id })
             });
+
+            if (!response.ok) {
+              throw new Error("Deletion failed on server");
+            }
 
             // 2. Clear local data
             onClearHistory();
             localStorage.clear();
 
-            // 3. Sign Out
+            // 3. Sign Out locally
             await supabase.auth.signOut();
              try { await GoogleAuth.signOut(); } catch (e) {}
 
