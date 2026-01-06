@@ -14,27 +14,45 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('lifetime');
   const [offerings, setOfferings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isProductsLoaded, setIsProductsLoaded] = useState(false);
   const { t, language: lang } = useLanguage();
 
   useEffect(() => {
     const loadProducts = async () => {
       if (Capacitor.isNativePlatform()) {
-        const offs = await PurchaseService.getOfferings();
-        setOfferings(offs);
+        try {
+          const offs = await PurchaseService.getOfferings();
+          if (offs && offs.current) {
+            setOfferings(offs);
+            setIsProductsLoaded(true);
+          } else {
+             console.warn("No offerings found. Ensure Google Play Merchant Account is active.");
+          }
+        } catch (e) {
+          console.error("Failed to load products", e);
+        }
+      } else {
+         // Mock for Web Testing
+         setIsProductsLoaded(true);
       }
     };
     loadProducts();
   }, []);
 
   const handlePurchase = async () => {
+    if (!isProductsLoaded && Capacitor.isNativePlatform()) {
+        alert(lang === 'ar' 
+          ? "عذراً، المتجر غير متاح حالياً. يرجى المحاولة لاحقاً." 
+          : "Store is currently unavailable. Please try again later.");
+        return;
+    }
+
     setIsLoading(true);
     try {
       if (Capacitor.isNativePlatform()) {
         // IDs must match what you configured in RevenueCat Dashboard
-        // e.g., 'halal_monthly' and 'halal_lifetime'
-        // If offerings are not ready yet, we can't purchase
         if (!offerings || !offerings.current) {
-            alert("Products not loaded yet. Please check connection.");
+            alert(lang === 'ar' ? "لا توجد منتجات متاحة للشراء." : "No products available.");
             setIsLoading(false);
             return;
         }
@@ -51,15 +69,19 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                alert(t.activated);
            }
         } else {
-           alert("Package not found in offerings.");
+           alert("Package not found configuration.");
         }
       } else {
-        // Fallback for Web Testing
-        alert("Payments only work on real devices.");
+        // Fallback for Web Testing logic
+        alert("Simulation: Purchase Successful");
+        onSubscribe();
+        onClose();
       }
-    } catch (e) {
-      console.error(e);
-      // alert("Purchase cancelled or failed");
+    } catch (e: any) {
+      if (!e.userCancelled) {
+         console.error(e);
+         // alert("Purchase failed");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -74,11 +96,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
         onClose();
         alert(t.activated);
       } else {
-        alert("No active subscription found to restore.");
+        alert(lang === 'ar' ? "لم يتم العثور على اشتراكات سابقة." : "No active subscription found.");
       }
     } catch (e) {
       console.error(e);
-      alert("Restore failed.");
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +150,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
             
             {/* Features */}
             <div className="space-y-3">
-              {/* Feature 1 */}
               <div className="flex items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
                 <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shrink-0">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -142,7 +162,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                 </div>
               </div>
               
-              {/* Feature 2 */}
               <div className="flex items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
                  <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20 shrink-0">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -155,7 +174,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                 </div>
               </div>
 
-              {/* Feature 3 */}
               <div className="flex items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
                  <div className="w-10 h-10 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20 shrink-0">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -172,55 +190,66 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
             {/* Plans */}
             <div>
               <h3 className="font-bold text-white text-sm mb-3 px-1">{t.choosePlan}</h3>
-              <div className="space-y-3">
-                {/* Monthly */}
-                <div 
-                  onClick={() => setSelectedPlan('monthly')}
-                  className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                    selectedPlan === 'monthly' 
-                      ? 'border-emerald-500 bg-emerald-500/10' 
-                      : 'border-white/10 bg-black/20 hover:bg-black/30'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedPlan === 'monthly' ? 'border-emerald-500 bg-emerald-500' : 'border-gray-500'}`}>
-                      {selectedPlan === 'monthly' && <div className="w-2 h-2 bg-white rounded-full"></div>}
-                    </div>
-                    <div>
-                      <span className="font-bold text-white block text-sm">{t.monthlyPlan}</span>
-                      <span className="text-xs text-gray-400">{t.monthlyDesc}</span>
-                    </div>
+              {!isProductsLoaded && Capacitor.isNativePlatform() ? (
+                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-center">
+                      <p className="text-yellow-400 text-xs font-bold">
+                          {lang === 'ar' ? "جاري الاتصال بالمتجر... يرجى الانتظار" : "Connecting to store..."}
+                      </p>
+                      <p className="text-gray-500 text-[10px] mt-1">
+                          {lang === 'ar' ? "إذا استمر هذا، تحقق من الاتصال بالإنترنت." : "Check your internet connection."}
+                      </p>
                   </div>
-                  <div className="text-end">
-                    <span className="font-bold text-emerald-400 text-lg">{monthlyPrice}</span>
-                    <span className="text-[10px] text-gray-500 block">/ {t.month}</span>
-                  </div>
-                </div>
+              ) : (
+                <div className="space-y-3">
+                    {/* Monthly */}
+                    <div 
+                    onClick={() => setSelectedPlan('monthly')}
+                    className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                        selectedPlan === 'monthly' 
+                        ? 'border-emerald-500 bg-emerald-500/10' 
+                        : 'border-white/10 bg-black/20 hover:bg-black/30'
+                    }`}
+                    >
+                    <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedPlan === 'monthly' ? 'border-emerald-500 bg-emerald-500' : 'border-gray-500'}`}>
+                        {selectedPlan === 'monthly' && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                        </div>
+                        <div>
+                        <span className="font-bold text-white block text-sm">{t.monthlyPlan}</span>
+                        <span className="text-xs text-gray-400">{t.monthlyDesc}</span>
+                        </div>
+                    </div>
+                    <div className="text-end">
+                        <span className="font-bold text-emerald-400 text-lg">{monthlyPrice}</span>
+                        <span className="text-[10px] text-gray-500 block">/ {t.month}</span>
+                    </div>
+                    </div>
 
-                {/* Lifetime */}
-                <div 
-                  onClick={() => setSelectedPlan('lifetime')}
-                  className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                    selectedPlan === 'lifetime' 
-                      ? 'border-amber-500 bg-amber-500/10' 
-                      : 'border-white/10 bg-black/20 hover:bg-black/30'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedPlan === 'lifetime' ? 'border-amber-500 bg-amber-500' : 'border-gray-500'}`}>
-                       {selectedPlan === 'lifetime' && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                    {/* Lifetime */}
+                    <div 
+                    onClick={() => setSelectedPlan('lifetime')}
+                    className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                        selectedPlan === 'lifetime' 
+                        ? 'border-amber-500 bg-amber-500/10' 
+                        : 'border-white/10 bg-black/20 hover:bg-black/30'
+                    }`}
+                    >
+                    <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedPlan === 'lifetime' ? 'border-amber-500 bg-amber-500' : 'border-gray-500'}`}>
+                        {selectedPlan === 'lifetime' && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                        </div>
+                        <div>
+                        <span className="font-bold text-white block text-sm">{t.lifetimePlan}</span>
+                        <span className="text-xs text-gray-400">{t.lifetimeDesc}</span>
+                        </div>
                     </div>
-                    <div>
-                      <span className="font-bold text-white block text-sm">{t.lifetimePlan}</span>
-                      <span className="text-xs text-gray-400">{t.lifetimeDesc}</span>
+                    <div className="text-end flex flex-col items-end">
+                        <div className="bg-amber-500 text-amber-950 text-[9px] font-bold px-1.5 py-0.5 rounded-md mb-1 inline-block uppercase">{t.bestValue}</div>
+                        <span className="font-bold text-amber-400 text-lg">{lifetimePrice}</span>
                     </div>
-                  </div>
-                  <div className="text-end flex flex-col items-end">
-                     <div className="bg-amber-500 text-amber-950 text-[9px] font-bold px-1.5 py-0.5 rounded-md mb-1 inline-block uppercase">{t.bestValue}</div>
-                    <span className="font-bold text-amber-400 text-lg">{lifetimePrice}</span>
-                  </div>
+                    </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -229,12 +258,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
         <div className="p-6 bg-[#1e1e1e] border-t border-white/5 shrink-0 z-20 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
            <button 
               onClick={handlePurchase}
-              disabled={isLoading}
+              disabled={isLoading || (!isProductsLoaded && Capacitor.isNativePlatform())}
               className={`w-full py-4 font-bold text-lg rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
                 selectedPlan === 'lifetime' 
                 ? 'bg-amber-500 hover:bg-amber-400 text-amber-950 shadow-amber-900/20' 
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'
-              } ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
+              } ${isLoading || (!isProductsLoaded && Capacitor.isNativePlatform()) ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isLoading ? (
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
