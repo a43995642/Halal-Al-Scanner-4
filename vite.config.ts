@@ -44,11 +44,28 @@ export default defineConfig(() => {
     build: {
       outDir: 'dist',
       emptyOutDir: true,
-      sourcemap: false,
+      sourcemap: false, // Disable sourcemaps for production to reduce bundle size
+      minify: 'esbuild',
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          // Removed privacy from here, handled by copyRootAssets now
+        },
+        output: {
+          // Manual chunking to separate vendor libs from app code for better caching/loading
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react') || id.includes('react-dom')) {
+                return 'vendor-react';
+              }
+              if (id.includes('@capacitor')) {
+                return 'vendor-capacitor';
+              }
+              if (id.includes('@google/genai') || id.includes('@supabase')) {
+                return 'vendor-cloud';
+              }
+              return 'vendor-others';
+            }
+          }
         }
       }
     },
