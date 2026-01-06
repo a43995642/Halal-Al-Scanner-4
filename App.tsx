@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBadge } from './components/StatusBadge';
 import { SubscriptionModal } from './components/SubscriptionModal';
@@ -7,21 +6,22 @@ import { PrivacyModal } from './components/PrivacyModal';
 import { TermsModal } from './components/TermsModal';
 import { SettingsModal } from './components/SettingsModal';
 import { AuthModal } from './components/AuthModal';
-import { CorrectionModal } from './components/CorrectionModal'; // Import Correction Modal
+import { CorrectionModal } from './components/CorrectionModal'; 
 import { analyzeImage, analyzeText } from './services/geminiService';
 import { fetchProductByBarcode } from './services/openFoodFacts';
 import { ScanResult, ScanHistoryItem, HalalStatus } from './types';
 import { secureStorage } from './utils/secureStorage';
 import { supabase } from './lib/supabase';
 import { useLanguage } from './contexts/LanguageContext';
-import { useCamera } from './hooks/useCamera'; // Direct hook usage
+import { useCamera } from './hooks/useCamera'; 
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
-import { App as CapacitorApp } from '@capacitor/app'; // Import Capacitor App plugin
+import { App as CapacitorApp } from '@capacitor/app'; 
+import { Capacitor } from '@capacitor/core';
+import { PurchaseService } from './services/purchaseService'; // Import RevenueCat Service
 
 // Constants
 const FREE_SCANS_LIMIT = 20; 
 const MAX_IMAGES_PER_SCAN = 4; 
-// The Web Client ID (Must match what is in Google Cloud Console > Web Application)
 const WEB_CLIENT_ID = "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com";
 
 // Utility for Haptic Feedback
@@ -87,7 +87,6 @@ const ImagePreviewModal = ({ images, onDelete, onClose }: { images: string[], on
   const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Handle scroll to update current index
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
     const width = e.currentTarget.offsetWidth;
@@ -95,7 +94,6 @@ const ImagePreviewModal = ({ images, onDelete, onClose }: { images: string[], on
     setCurrentIndex(index);
   };
   
-  // Adjust index if images array shrinks
   useEffect(() => {
     if (currentIndex >= images.length && images.length > 0) {
       setCurrentIndex(images.length - 1);
@@ -104,7 +102,6 @@ const ImagePreviewModal = ({ images, onDelete, onClose }: { images: string[], on
 
   return (
     <div className="fixed inset-0 z-[80] bg-black flex flex-col animate-fade-in">
-       {/* Top Bar */}
        <div className="absolute top-0 left-0 right-0 z-20 p-4 pt-[calc(env(safe-area-inset-top)+1rem)] flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
           <div className="pointer-events-auto bg-black/30 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
              <span className="text-white font-bold text-sm font-mono">{currentIndex + 1} / {images.length}</span>
@@ -114,7 +111,6 @@ const ImagePreviewModal = ({ images, onDelete, onClose }: { images: string[], on
           </button>
        </div>
        
-       {/* Fullscreen Slider */}
        <div 
          className="flex-grow flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
          onScroll={handleScroll}
@@ -127,10 +123,7 @@ const ImagePreviewModal = ({ images, onDelete, onClose }: { images: string[], on
           ))}
        </div>
 
-       {/* Bottom Bar */}
        <div className="absolute bottom-0 left-0 right-0 z-20 p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] bg-gradient-to-t from-black/90 via-black/60 to-transparent flex flex-col gap-5 items-center">
-          
-          {/* Delete Button */}
           <button 
              onClick={() => onDelete(currentIndex)} 
              className="bg-red-500/10 text-red-500 border border-red-500/30 p-3 rounded-full hover:bg-red-500 hover:text-white transition active:scale-95 backdrop-blur-md flex items-center gap-2 px-6"
@@ -138,7 +131,6 @@ const ImagePreviewModal = ({ images, onDelete, onClose }: { images: string[], on
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
            </button>
 
-          {/* Confirm Button */}
           <button onClick={onClose} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-emerald-700 transition shadow-lg shadow-emerald-900/30 active:scale-[0.98]">
              {t.confirm} ({images.length})
           </button>
@@ -153,11 +145,10 @@ const BarcodeModal = ({ onClose, onSearch }: { onClose: () => void, onSearch: (b
   return (
     <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
       <div className="bg-[#1e1e1e] rounded-3xl w-full max-w-sm shadow-2xl border border-white/10 animate-slide-up flex flex-col overflow-hidden">
-        {/* Header */}
         <div className="p-5 border-b border-white/5 flex justify-between items-center bg-white/5">
            <h3 className="font-bold text-white flex items-center gap-3">
              <div className="p-2 bg-emerald-500/20 rounded-full text-emerald-400">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 9.375v-4.5z" /></svg>
              </div>
              {t.barcodeTitle}
            </h3>
@@ -166,7 +157,6 @@ const BarcodeModal = ({ onClose, onSearch }: { onClose: () => void, onSearch: (b
            </button>
         </div>
         
-        {/* Input Area */}
         <div className="p-6">
            <div className="relative">
               <input 
@@ -184,7 +174,6 @@ const BarcodeModal = ({ onClose, onSearch }: { onClose: () => void, onSearch: (b
            </div>
         </div>
 
-        {/* Footer */}
         <div className="p-5 border-t border-white/5 bg-white/5">
            <button onClick={() => onSearch(barcode)} disabled={barcode.length < 3} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-bold transition shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
@@ -201,7 +190,6 @@ const HistoryModal = ({ history, onClose, onLoadItem }: { history: ScanHistoryIt
   return (
     <div className="fixed inset-0 z-[55] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
       <div className="bg-[#1e1e1e] rounded-t-3xl sm:rounded-3xl w-full max-w-md h-[80vh] flex flex-col shadow-2xl border border-white/10 animate-slide-up">
-        {/* Header */}
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5 rounded-t-3xl">
           <h2 className="text-xl font-bold text-white flex items-center gap-3">
             <div className="p-2 bg-emerald-500/20 rounded-full text-emerald-400">
@@ -214,7 +202,6 @@ const HistoryModal = ({ history, onClose, onLoadItem }: { history: ScanHistoryIt
           </button>
         </div>
         
-        {/* List */}
         <div className="overflow-y-auto flex-grow p-4 space-y-3 custom-scrollbar">
           {history.length === 0 ? (
              <div className="text-center text-gray-500 py-20 flex flex-col items-center">
@@ -257,7 +244,6 @@ const TextInputModal = ({ onClose, onAnalyze }: { onClose: () => void, onAnalyze
   return (
     <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
       <div className="bg-[#1e1e1e] rounded-3xl w-full max-w-md shadow-2xl border border-white/10 animate-slide-up flex flex-col overflow-hidden">
-        {/* Header */}
         <div className="p-5 border-b border-white/5 flex justify-between items-center bg-white/5">
            <h3 className="font-bold text-white flex items-center gap-3">
              <div className="p-2 bg-emerald-500/20 rounded-full text-emerald-400">
@@ -270,7 +256,6 @@ const TextInputModal = ({ onClose, onAnalyze }: { onClose: () => void, onAnalyze
            </button>
         </div>
         
-        {/* Input Area */}
         <div className="p-6">
            <textarea 
              className="w-full h-40 bg-black/50 border border-white/10 rounded-2xl p-4 text-base focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 outline-none resize-none text-white placeholder-white/30 leading-relaxed custom-scrollbar" 
@@ -287,7 +272,6 @@ const TextInputModal = ({ onClose, onAnalyze }: { onClose: () => void, onAnalyze
            </div>
         </div>
 
-        {/* Footer */}
         <div className="p-5 border-t border-white/5 bg-white/5">
            <button onClick={() => onAnalyze(text)} disabled={!text.trim()} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-bold transition shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 00-1.423 1.423z" /></svg>
@@ -303,21 +287,19 @@ function App() {
   const [images, setImages] = useState<string[]>([]);
   const [showTextModal, setShowTextModal] = useState(false); 
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false); // New state for preview modal
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [analyzedTextContent, setAnalyzedTextContent] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const useLowQuality = false; // Define constant instead of unused state
+  const useLowQuality = false; 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
-  // Focus Mode State (Immersive Mode)
   const [isFocusMode, setIsFocusMode] = useState(false);
 
-  // App State Modals
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -325,20 +307,17 @@ function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showCorrectionModal, setShowCorrectionModal] = useState(false); // New Correction Modal State
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
 
-  // Data
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
   const [isPremium, setIsPremium] = useState(false);
   const [scanCount, setScanCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   
-  // Contexts
   const { language, setLanguage, t } = useLanguage();
   const abortControllerRef = useRef<AbortController | null>(null);
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // --- CAMERA HOOK INTEGRATION ---
   const { 
     videoRef, 
     isCapturing, 
@@ -348,7 +327,6 @@ function App() {
     hasTorch 
   } = useCamera();
 
-  // Keep track of state for the event listener (closure workaround)
   const stateRef = useRef({
     showOnboarding, showPrivacy, showTerms, showSettings,
     showHistory, showSubscriptionModal, showAuthModal,
@@ -356,7 +334,6 @@ function App() {
     showPreviewModal, result, images, isLoading
   });
 
-  // Update ref on every render to ensure listener has latest state
   Object.assign(stateRef.current, {
     showOnboarding, showPrivacy, showTerms, showSettings,
     showHistory, showSubscriptionModal, showAuthModal,
@@ -364,25 +341,20 @@ function App() {
     showPreviewModal, result, images, isLoading
   });
 
-  // Force Dark Mode for Immersive UI
   useEffect(() => {
     document.documentElement.classList.add('dark');
+    
+    // Initialize RevenueCat on App Start
+    PurchaseService.initialize();
   }, []);
 
-  // Back Button Handling (Android)
   useEffect(() => {
     let backButtonListener: any;
 
     const setupBackButton = async () => {
-      // Priority Logic:
-      // 1. Close Modals
-      // 2. Clear Results (Go back to Camera)
-      // 3. Exit App (if at root)
       backButtonListener = await CapacitorApp.addListener('backButton', () => {
         const s = stateRef.current;
         
-        // 1. Modals (High Priority)
-        // Note: Onboarding is usually mandatory, so we might block back or exit app
         if (s.showOnboarding) {
            CapacitorApp.exitApp();
            return;
@@ -399,24 +371,20 @@ function App() {
         if (s.showTextModal) { setShowTextModal(false); return; }
         if (s.showPreviewModal) { setShowPreviewModal(false); return; }
 
-        // 2. Result Screen -> Back to Camera
         if (s.result && !s.isLoading) {
-          // Reset App Logic inline to avoid dependency issues
           setResult(null);
           setAnalyzedTextContent(null);
           setError(null);
           setIsLoading(false);
-          setImages([]); // Usually back from result clears everything
+          setImages([]);
           return;
         }
 
-        // 3. Images selected but not analyzed -> Clear images (optional UX choice)
         if (s.images.length > 0 && !s.isLoading) {
            setImages([]);
            return;
         }
 
-        // 4. Default -> Exit App
         CapacitorApp.exitApp();
       });
     };
@@ -430,7 +398,6 @@ function App() {
     };
   }, []);
 
-  // Cycle images during loading
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
     if (isLoading && images.length > 1) {
@@ -443,15 +410,12 @@ function App() {
     return () => { if (interval) clearInterval(interval); };
   }, [isLoading, images.length]);
 
-  // Initial Load (History, Auth, Terms)
   useEffect(() => {
-    // 1. Initialize Google Auth (Required for Web/Native)
-    // We explicitly pass the client ID here to avoid any configuration merging issues
     try {
         GoogleAuth.initialize({
           clientId: WEB_CLIENT_ID,
           scopes: ['profile', 'email'],
-          grantOfflineAccess: false, // Changed to false for better stability on Android
+          grantOfflineAccess: false,
         });
     } catch (e) {
         console.error("Google Auth Init Failed", e);
@@ -474,9 +438,7 @@ function App() {
         
         let uid = session?.user?.id;
         
-        // If not logged in, try anonymous flow (optional) or just use local storage fallback
         if (!uid) {
-           // We keep the anonymous flow for now if auth is not forced
            const { data: anonData } = await (supabase.auth as any).signInAnonymously();
            uid = anonData?.user?.id;
         }
@@ -484,29 +446,26 @@ function App() {
         if (uid) {
           setUserId(uid);
           await fetchUserStats(uid);
+          // Sync with RevenueCat
+          PurchaseService.logIn(uid);
         }
 
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: any, session: any) => {
              const newUid = session?.user?.id;
              if (newUid) {
                  setUserId(newUid);
                  await fetchUserStats(newUid);
+                 PurchaseService.logIn(newUid);
              } else {
                  setUserId(null);
+                 PurchaseService.logOut();
              }
         });
 
-        // ⚠️ DEEP LINK HANDLER (Fixed for Android)
         CapacitorApp.addListener('appUrlOpen', async ({ url }) => {
             console.log('App deep link opened:', url);
             
-            // Check for our custom scheme OR any login callback pattern
             if (url.startsWith('io.halalscanner.ai://') || url.includes('login-callback')) {
-                 // Extract fragments (Supabase typically sends tokens in the hash)
-                 // URL structure example: io.halalscanner.ai://login-callback#access_token=...&refresh_token=...
-                 
-                 // Handle both Hash (#) and Query (?) parameters just in case
                  const hashIndex = url.indexOf('#');
                  const queryIndex = url.indexOf('?');
                  
@@ -524,7 +483,6 @@ function App() {
                      const refreshToken = params.get('refresh_token');
                      
                      if (accessToken && refreshToken) {
-                         // Manually set session
                          const { data, error } = await supabase.auth.setSession({
                              access_token: accessToken,
                              refresh_token: refreshToken
@@ -533,7 +491,7 @@ function App() {
                          if (!error && data.session) {
                              setUserId(data.session.user.id);
                              await fetchUserStats(data.session.user.id);
-                             setShowAuthModal(false); // Close auth modal on success
+                             setShowAuthModal(false);
                              showToast(t.loginSuccess);
                          } else {
                              console.error("Session set error:", error);
@@ -550,6 +508,12 @@ function App() {
 
     const cachedPremium = secureStorage.getItem<boolean>('isPremium', false);
     setIsPremium(cachedPremium);
+    
+    // Check RevenueCat status periodically
+    PurchaseService.checkSubscriptionStatus().then(isPro => {
+        setIsPremium(isPro);
+    });
+
     initSupabase();
 
     return () => {
@@ -562,8 +526,11 @@ function App() {
       const { data } = await supabase.from('user_stats').select('scan_count, is_premium').eq('id', uid).single();
       if (data) {
         setScanCount(data.scan_count);
-        setIsPremium(data.is_premium);
-        secureStorage.setItem('isPremium', data.is_premium);
+        // We trust RevenueCat more than DB for premium status if on mobile
+        if (!Capacitor.isNativePlatform()) {
+            setIsPremium(data.is_premium);
+            secureStorage.setItem('isPremium', data.is_premium);
+        }
       }
   };
 
@@ -582,14 +549,13 @@ function App() {
   // --- ACTIONS ---
 
   const handleCaptureClick = () => {
-    // If we have results, this button acts as "Reset"
     if (result) {
         resetApp();
         return;
     }
 
     if (isCapturing) return;
-    if (isLoading) return; // Prevent capture while analyzing
+    if (isLoading) return;
     
     // Check Limits
     if (!isPremium && scanCount >= FREE_SCANS_LIMIT) {
@@ -601,19 +567,16 @@ function App() {
         return;
     }
 
-    // Capture Logic
     captureImage((src) => {
-        // Multi-Shot Logic: Add to images array but DO NOT close camera logic
         const newImages = [...images, src];
         setImages(newImages);
         vibrate(50);
         showToast(t.imgAdded);
-        // We do NOT reset state or hide video here, allowing user to take next photo
-    }, false); // false = keep camera active
+    }, false);
   };
 
   const handleAnalyze = async () => {
-    if (images.length === 0 || isLoading) return; // Prevent re-trigger if already loading
+    if (images.length === 0 || isLoading) return;
     setIsLoading(true);
     setError(null);
     setAnalyzedTextContent(null);
@@ -645,7 +608,6 @@ function App() {
          setResult(scanResult);
          if (userId) await fetchUserStats(userId);
          
-         // Save thumbnail
          compressImage(compressedImages[0], 200, 0.6).then(thumb => saveToHistory(scanResult, thumb)).catch(() => saveToHistory(scanResult));
       }
     } catch (err: any) {
@@ -663,32 +625,28 @@ function App() {
     setAnalyzedTextContent(null);
     setError(null);
     setIsLoading(false);
-    // Exit focus mode when resetting if desirable, but keeping it persistent feels better
   };
 
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
     vibrate(20);
-    // If no images left, close the modal
     if (images.length <= 1) setShowPreviewModal(false);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (isLoading) return; // Prevent selection while analyzing
+    if (isLoading) return;
 
     if (e.target.files && e.target.files.length > 0) {
       let files = Array.from(e.target.files) as File[];
       
-      // Calculate remaining slots based on current images
       const remainingSlots = MAX_IMAGES_PER_SCAN - images.length;
       
       if (remainingSlots <= 0) {
          showToast(t.maxImages);
-         e.target.value = ''; // Reset input to allow selecting again
+         e.target.value = '';
          return;
       }
 
-      // If more files selected than allowed, slice the array and show toast
       if (files.length > remainingSlots) {
          showToast(t.maxImages);
          files = files.slice(0, remainingSlots);
@@ -703,8 +661,6 @@ function App() {
       }
       setImages(prev => [...prev, ...newImages]);
       vibrate(50);
-      
-      // Reset input value to allow selecting the same file again if deleted
       e.target.value = '';
     }
   };
@@ -751,6 +707,13 @@ function App() {
     }
   };
 
+  const handleSubscribe = async () => {
+    // This will be handled inside SubscriptionModal via PurchaseService
+    // But we need to update state if successful
+    const isPro = await PurchaseService.checkSubscriptionStatus();
+    setIsPremium(isPro);
+  };
+
   // --- RENDER ---
   return (
     <div className="fixed inset-0 bg-black text-white font-sans flex flex-col overflow-hidden">
@@ -764,7 +727,6 @@ function App() {
       {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={() => { setShowAuthModal(false); fetchUserStats(userId || ''); }} />}
       
-      {/* Correction Modal */}
       {showCorrectionModal && result && (
          <CorrectionModal 
             onClose={() => setShowCorrectionModal(false)} 
@@ -783,7 +745,7 @@ function App() {
           onOpenPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }}
           onOpenTerms={() => { setShowSettings(false); setShowTerms(true); }}
       />}
-      {showSubscriptionModal && <SubscriptionModal onSubscribe={() => {}} onClose={() => setShowSubscriptionModal(false)} isLimitReached={false} />}
+      {showSubscriptionModal && <SubscriptionModal onSubscribe={handleSubscribe} onClose={() => setShowSubscriptionModal(false)} isLimitReached={false} />}
       {toastMessage && <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gray-900/90 text-white px-6 py-3 rounded-full shadow-xl z-[80] animate-fade-in text-sm font-medium backdrop-blur-sm border border-white/10">{toastMessage}</div>}
 
       {/* --- LAYER 1: VIDEO BACKGROUND --- */}
@@ -811,16 +773,6 @@ function App() {
             </div>
          )}
 
-         {/* Scanning Overlay Animation */}
-         {isLoading && (
-            <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-               <div className="absolute left-0 right-0 h-1 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-scan"></div>
-            </div>
-         )}
-
-         {/* If we have a result OR we are loading (analyzing), show the preview image. 
-             CRITICAL FIX: Do NOT show preview image just because images.length > 0. 
-             We want to see the video to take more pictures. */}
          {(result || isLoading) && images.length > 0 && (
             <img 
               src={images[currentPreviewIndex]} 
@@ -828,7 +780,6 @@ function App() {
               className="absolute inset-0 w-full h-full object-cover z-0 bg-black"
             />
          )}
-         {/* Dimmer overlay for better UI contrast */}
          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none z-10"></div>
       </div>
 
@@ -849,9 +800,8 @@ function App() {
          </button>
       </div>
 
-      {/* --- LAYER 3: MIDDLE CONTENT (Result or Viewfinder) --- */}
+      {/* --- LAYER 3: MIDDLE CONTENT --- */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none p-6 pb-48">
-         {/* Loading State */}
          {isLoading && (
             <div className="w-64 bg-black/80 backdrop-blur-xl rounded-2xl p-6 text-center border border-white/10 pointer-events-auto shadow-2xl">
                <div className="w-full bg-gray-700 rounded-full h-2 mb-4 overflow-hidden"><div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${progress}%` }}></div></div>
@@ -860,7 +810,7 @@ function App() {
                  onClick={() => {
                      if (abortControllerRef.current) abortControllerRef.current.abort();
                      setIsLoading(false);
-                     setImages([]); // Reset images on cancel or keep them? Resetting is safer state-wise.
+                     setImages([]); 
                  }}
                  className="text-xs text-gray-400 hover:text-white underline decoration-gray-500 underline-offset-4"
                >
@@ -869,7 +819,6 @@ function App() {
             </div>
          )}
 
-         {/* Result State */}
          {!isLoading && result && (
             <div className="w-full max-w-sm pointer-events-auto animate-fade-in flex flex-col gap-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
                 <StatusBadge status={result.status} />
@@ -881,7 +830,6 @@ function App() {
                     <p className="text-gray-300 text-sm leading-relaxed">{result.reason}</p>
                 </div>
                 
-                {/* Reporting Button */}
                 <div className="flex justify-center">
                    <button 
                       onClick={() => setShowCorrectionModal(true)}
@@ -904,7 +852,6 @@ function App() {
             </div>
          )}
 
-         {/* Error State */}
          {!isLoading && error && (
             <div className="w-full max-w-sm bg-red-900/90 backdrop-blur-md p-4 rounded-xl border border-red-500/50 text-white text-center pointer-events-auto">
                <p className="font-bold mb-1">{t.analysisFailed}</p>
@@ -914,12 +861,11 @@ function App() {
          )}
       </div>
 
-      {/* --- LAYER 4: GOOGLE TRANSLATE STYLE BOTTOM SHEET (Or Floating Buttons in Focus Mode) --- */}
+      {/* --- LAYER 4: BOTTOM BAR --- */}
       <div className={`absolute bottom-0 left-0 right-0 z-30 pt-6 pb-[calc(env(safe-area-inset-bottom)+1rem)] transition-all duration-500 ease-in-out rounded-t-[2rem] border-t ${(isFocusMode && !result) || isLoading ? 'bg-transparent border-transparent shadow-none pointer-events-none' : 'bg-[#121212] shadow-[0_-5px_30px_rgba(0,0,0,0.8)] border-white/5'}`}>
          
          <div className="flex flex-col gap-6 px-6 max-w-md mx-auto">
             
-            {/* 1. Camera Controls Row (Floating over the black bar visually) */}
             <div className="flex justify-between items-center relative pointer-events-auto">
                
                {/* LEFT: Gallery OR Preview */}
@@ -927,7 +873,6 @@ function App() {
                   {!isLoading && (
                     <>
                       {images.length > 0 && !result ? (
-                         // NEW PREVIEW BUTTON (Shows when photos exist)
                          <button 
                            onClick={() => setShowPreviewModal(true)} 
                            className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white/50 transition shadow-lg active:scale-95`}
@@ -939,7 +884,6 @@ function App() {
                             </div>
                          </button>
                       ) : (
-                         // OLD GALLERY BUTTON
                          <label className={`w-12 h-12 rounded-full flex items-center justify-center transition border border-white/10 cursor-pointer active:scale-90 ${isFocusMode && !result ? 'bg-black/40 backdrop-blur-md hover:bg-black/60' : 'bg-[#2c2c2c] hover:bg-[#3d3d3d]'}`}>
                             <input type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" disabled={!isPremium && scanCount >= FREE_SCANS_LIMIT} />
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
@@ -953,17 +897,14 @@ function App() {
                {/* CENTER: SHUTTER BUTTON */}
                <div className="relative -top-3">
                   {isLoading ? (
-                      // Loading Spinner in Center (prevents user from clicking Reset/Capture accidentally)
                       <div className="w-20 h-20 rounded-full border-[5px] border-white/10 bg-black/40 flex items-center justify-center backdrop-blur-md shadow-lg">
                            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
                       </div>
                   ) : result ? (
-                     // Reset Action (Start New Scan)
                      <button onClick={resetApp} className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-lg active:scale-95 transition">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8 text-black"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                      </button>
                   ) : (
-                     // Capture Action (Take Photo)
                      <button onClick={handleCaptureClick} className="w-20 h-20 rounded-full border-[5px] border-white/80 bg-white/10 flex items-center justify-center backdrop-blur-sm active:scale-95 transition hover:bg-white/20">
                         <div className="w-16 h-16 bg-white rounded-full pointer-events-none"></div>
                      </button>
@@ -975,7 +916,6 @@ function App() {
                   {!isLoading && (
                     <>
                       {images.length > 0 && !result ? (
-                         // ANALYZE BUTTON (Shows when photos exist)
                          <>
                             <button 
                                onClick={handleAnalyze} 
@@ -988,10 +928,9 @@ function App() {
                             <span className={`text-[10px] font-bold transition-opacity duration-300 ${isFocusMode && !result ? 'opacity-0' : 'text-emerald-400'}`}>{t.scanImagesBtn}</span>
                          </>
                       ) : (
-                         // BARCODE BUTTON (Shows initially)
                          <>
                             <button onClick={() => setShowBarcodeModal(true)} className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition border border-white/10 ${isFocusMode && !result ? 'bg-black/40 backdrop-blur-md hover:bg-black/60' : 'bg-[#2c2c2c] hover:bg-[#3d3d3d]'}`}>
-                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" /></svg>
+                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 9.375v-4.5z" /></svg>
                             </button>
                             <span className={`text-[10px] font-medium transition-opacity duration-300 ${isFocusMode && !result ? 'opacity-0' : 'text-gray-400'}`}>{t.btnBarcode}</span>
                          </>
@@ -1001,15 +940,12 @@ function App() {
                </div>
             </div>
 
-            {/* 2. Text/Lang Controls Row (Bottom Black Bar) - Hides in Focus Mode */}
             <div className={`flex justify-between items-center bg-[#202020] rounded-2xl p-2 px-4 border border-white/5 transition-all duration-500 ease-in-out ${(isFocusMode && !result) || isLoading ? 'translate-y-20 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100 pointer-events-auto'}`}>
-                {/* Language */}
                 <div className="flex bg-[#303030] rounded-xl p-1">
                     <button onClick={() => setLanguage('ar')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${language === 'ar' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}>العربية</button>
                     <button onClick={() => setLanguage('en')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${language === 'en' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}>English</button>
                 </div>
 
-                {/* Manual Input */}
                 <button onClick={() => setShowTextModal(true)} className="flex items-center gap-2 text-gray-300 hover:text-white transition px-2 py-2">
                     <span className="text-sm font-bold">{t.btnManual}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>

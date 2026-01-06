@@ -1,6 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { PurchaseService } from '../services/purchaseService';
+import { Capacitor } from '@capacitor/core';
 
 interface SubscriptionModalProps {
   onSubscribe: () => void;
@@ -10,7 +12,81 @@ interface SubscriptionModalProps {
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscribe, onClose, isLimitReached: _isLimitReached }) => {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('lifetime');
+  const [offerings, setOfferings] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { t, language: lang } = useLanguage();
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      if (Capacitor.isNativePlatform()) {
+        const offs = await PurchaseService.getOfferings();
+        setOfferings(offs);
+      }
+    };
+    loadProducts();
+  }, []);
+
+  const handlePurchase = async () => {
+    setIsLoading(true);
+    try {
+      if (Capacitor.isNativePlatform()) {
+        // IDs must match what you configured in RevenueCat Dashboard
+        // e.g., 'halal_monthly' and 'halal_lifetime'
+        // If offerings are not ready yet, we can't purchase
+        if (!offerings || !offerings.current) {
+            alert("Products not loaded yet. Please check connection.");
+            setIsLoading(false);
+            return;
+        }
+
+        const pkg = selectedPlan === 'monthly' 
+           ? offerings.current.monthly 
+           : offerings.current.lifetime;
+
+        if (pkg) {
+           const success = await PurchaseService.purchasePackage(pkg);
+           if (success) {
+               onSubscribe();
+               onClose();
+               alert(t.activated);
+           }
+        } else {
+           alert("Package not found in offerings.");
+        }
+      } else {
+        // Fallback for Web Testing
+        alert("Payments only work on real devices.");
+      }
+    } catch (e) {
+      console.error(e);
+      // alert("Purchase cancelled or failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setIsLoading(true);
+    try {
+      const restored = await PurchaseService.restorePurchases();
+      if (restored) {
+        onSubscribe();
+        onClose();
+        alert(t.activated);
+      } else {
+        alert("No active subscription found to restore.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Restore failed.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Dynamic Prices (or fallback to static text)
+  const monthlyPrice = offerings?.current?.monthly?.product?.priceString || t.monthlyPrice;
+  const lifetimePrice = offerings?.current?.lifetime?.product?.priceString || t.lifetimePrice;
 
   return (
     <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 animate-fade-in">
@@ -28,7 +104,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
              </svg>
            </button>
 
-           {/* Background Pattern */}
            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
            
            <div className="relative z-10 flex flex-col items-center">
@@ -117,7 +192,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                     </div>
                   </div>
                   <div className="text-end">
-                    <span className="font-bold text-emerald-400 text-lg">{t.monthlyPrice}</span>
+                    <span className="font-bold text-emerald-400 text-lg">{monthlyPrice}</span>
                     <span className="text-[10px] text-gray-500 block">/ {t.month}</span>
                   </div>
                 </div>
@@ -142,7 +217,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                   </div>
                   <div className="text-end flex flex-col items-end">
                      <div className="bg-amber-500 text-amber-950 text-[9px] font-bold px-1.5 py-0.5 rounded-md mb-1 inline-block uppercase">{t.bestValue}</div>
-                    <span className="font-bold text-amber-400 text-lg">{t.lifetimePrice}</span>
+                    <span className="font-bold text-amber-400 text-lg">{lifetimePrice}</span>
                   </div>
                 </div>
               </div>
@@ -153,23 +228,30 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
         {/* Footer Button */}
         <div className="p-6 bg-[#1e1e1e] border-t border-white/5 shrink-0 z-20 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
            <button 
-              onClick={onSubscribe}
+              onClick={handlePurchase}
+              disabled={isLoading}
               className={`w-full py-4 font-bold text-lg rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
                 selectedPlan === 'lifetime' 
                 ? 'bg-amber-500 hover:bg-amber-400 text-amber-950 shadow-amber-900/20' 
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'
-              }`}
+              } ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
             >
-              <span>
-                {selectedPlan === 'lifetime' ? t.buyLifetime : t.subscribeNow}
-              </span>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={`w-5 h-5 ${lang === 'ar' ? 'rotate-180' : ''}`}>
-                 <path fillRule="evenodd" d="M12.97 3.97a.75.75 0 011.06 0l7.5 7.5a.75.75 0 010 1.06l-7.5 7.5a.75.75 0 11-1.06-1.06l6.22-6.22H3a.75.75 0 010-1.5h16.19l-6.22-6.22a.75.75 0 010-1.06z" clipRule="evenodd" />
-              </svg>
+              {isLoading ? (
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <span>
+                    {selectedPlan === 'lifetime' ? t.buyLifetime : t.subscribeNow}
+                  </span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={`w-5 h-5 ${lang === 'ar' ? 'rotate-180' : ''}`}>
+                     <path fillRule="evenodd" d="M12.97 3.97a.75.75 0 011.06 0l7.5 7.5a.75.75 0 010 1.06l-7.5 7.5a.75.75 0 11-1.06-1.06l6.22-6.22H3a.75.75 0 010-1.5h16.19l-6.22-6.22a.75.75 0 010-1.06z" clipRule="evenodd" />
+                  </svg>
+                </>
+              )}
             </button>
             
             <div className="flex justify-center items-center mt-4 text-[10px] text-gray-500 gap-4 font-medium">
-              <button className="hover:text-gray-300 transition">{t.restorePurchases}</button>
+              <button onClick={handleRestore} disabled={isLoading} className="hover:text-gray-300 transition">{t.restorePurchases}</button>
               <span className="w-px h-3 bg-white/10"></span>
               <button className="hover:text-gray-300 transition">{t.termsOfUse}</button>
               <span className="w-px h-3 bg-white/10"></span>
