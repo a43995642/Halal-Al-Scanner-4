@@ -8,13 +8,13 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Custom plugin to copy root assets (icon.png, manifest.json, privacy.html) to dist/
+// Custom plugin to copy root assets (icon.png, manifest.json, privacy.html, delete-account.html) to dist/
 const copyRootAssets = () => {
   return {
     name: 'copy-root-assets',
     closeBundle: async () => {
-      // Added privacy.html here to ensure it is copied exactly as is
-      const filesToCopy = ['icon.png', 'manifest.json', 'service-worker.js', 'privacy.html'];
+      // Added privacy.html and delete-account.html here to ensure they are copied exactly as is
+      const filesToCopy = ['icon.png', 'manifest.json', 'service-worker.js', 'privacy.html', 'delete-account.html'];
       const distDir = path.resolve(__dirname, 'dist');
       
       if (!fs.existsSync(distDir)) return;
