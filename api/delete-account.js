@@ -35,6 +35,29 @@ export default async function handler(request, response) {
     // Initialize Supabase Admin
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // ---------------------------------------------------------
+    // STEP 1: LOG THE DELETION (So you know who deleted their account)
+    // ---------------------------------------------------------
+    try {
+        // Try to fetch user email before deleting
+        const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
+        
+        if (user) {
+            await supabase.from('deleted_users_log').insert({
+                user_id: userId,
+                email: user.email,
+                deleted_at: new Date().toISOString()
+            });
+            console.log(`[Audit] Logged deletion for user: ${user.email}`);
+        }
+    } catch (logErr) {
+        console.warn("Could not log deletion (proceeding anyway):", logErr);
+    }
+
+    // ---------------------------------------------------------
+    // STEP 2: DELETE DATA
+    // ---------------------------------------------------------
+
     // 1. Delete/Anonymize User Stats
     const { error: statsError } = await supabase
       .from('user_stats')
@@ -43,7 +66,7 @@ export default async function handler(request, response) {
 
     if (statsError) console.warn("Error deleting stats:", statsError);
 
-    // 2. Delete Reports made by user (Optional: or anonymize them)
+    // 2. Delete Reports made by user
     const { error: reportsError } = await supabase
       .from('reports')
       .delete()
@@ -52,13 +75,11 @@ export default async function handler(request, response) {
     if (reportsError) console.warn("Error deleting reports:", reportsError);
 
     // 3. Delete from Auth Users (Requires Service Role Key)
-    // Note: If you don't have the Service Role Key set in Vercel Env Vars, 
-    // this specific part might fail, but the user data above is gone.
     const { error: authError } = await supabase.auth.admin.deleteUser(userId);
     
     if (authError) {
         console.warn("Could not delete from Auth (likely missing Service Role Key):", authError);
-        // Fallback: If we can't delete auth, we explicitly verify the user is cleared from app data
+        // Even if auth deletion fails (due to permissions), we cleared the app data above.
     }
 
     return response.status(200).json({ success: true, message: 'Account data deleted' });
