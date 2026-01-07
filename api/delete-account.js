@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 // Configuration
 const PROJECT_URL = 'https://lrnvtsnacrmnnsitdubz.supabase.co';
 const supabaseUrl = process.env.VITE_SUPABASE_URL || PROJECT_URL;
-// MUST use Service Role Key to have permission to delete users/data
+// MUST use Service Role Key to have permission to delete users/data and read emails
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY; 
 
 export default async function handler(request, response) {
@@ -43,6 +43,7 @@ export default async function handler(request, response) {
         const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
         
         if (user) {
+            // Insert into the log table created via SQL
             await supabase.from('deleted_users_log').insert({
                 user_id: userId,
                 email: user.email,
@@ -79,7 +80,7 @@ export default async function handler(request, response) {
     
     if (authError) {
         console.warn("Could not delete from Auth (likely missing Service Role Key):", authError);
-        // Even if auth deletion fails (due to permissions), we cleared the app data above.
+        // We still return success if app data was cleared, even if auth deletion had a permission issue
     }
 
     return response.status(200).json({ success: true, message: 'Account data deleted' });
