@@ -455,12 +455,24 @@ function App() {
           PurchaseService.logIn(uid);
         }
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: any, session: any) => {
+        // Listen for Auth Changes (Sign In, Token Refresh, Sign Out)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
              const newUid = session?.user?.id;
+             const isAuthUser = session?.user?.role === 'authenticated';
+
              if (newUid) {
                  setUserId(newUid);
                  await fetchUserStats(newUid);
                  PurchaseService.logIn(newUid);
+
+                 // 🔴 Fix: If user is authenticated and modal is open, CLOSE IT
+                 // This catches Deep Link logins and Session Refreshes
+                 if (isAuthUser && stateRef.current.showAuthModal) {
+                     console.log("User authenticated, closing modal...");
+                     setShowAuthModal(false);
+                     setShowAuthSuccess(true);
+                     setTimeout(() => setShowAuthSuccess(false), 4000);
+                 }
              } else {
                  setUserId(null);
                  PurchaseService.logOut();
@@ -493,16 +505,8 @@ function App() {
                              refresh_token: refreshToken
                          });
                          
-                         if (!error && data.session) {
-                             setUserId(data.session.user.id);
-                             await fetchUserStats(data.session.user.id);
-                             setShowAuthModal(false);
-                             // Trigger Success Modal instead of Toast
-                             setShowAuthSuccess(true);
-                             
-                             // Auto hide after 4 seconds if user doesn't interact
-                             setTimeout(() => setShowAuthSuccess(false), 4000);
-                         } else {
+                         // Note: onAuthStateChange will also fire if this succeeds
+                         if (error) {
                              console.error("Session set error:", error);
                          }
                      }
