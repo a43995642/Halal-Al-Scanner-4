@@ -212,4 +212,8 @@ export interface TranslationDictionary {
   notesPlaceholder: string;
   sendReport: string;
   reportSent: string;
+  // Resend Email
+  resendEmail: string;
+  resending: string;
+  emailResent: string;
 }

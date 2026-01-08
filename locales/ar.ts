@@ -208,7 +208,10 @@ const ar: TranslationDictionary = {
   notes: "ملاحظات إضافية (اختياري)",
   notesPlaceholder: "اشرح سبب الخطأ... (مثال: يحتوي على E120)",
   sendReport: "إرسال التقرير",
-  reportSent: "شكراً لك! تم استلام تقريرك."
+  reportSent: "شكراً لك! تم استلام تقريرك.",
+  resendEmail: "إعادة إرسال الرابط",
+  resending: "جاري الإرسال...",
+  emailResent: "تم إرسال رابط جديد!"
 };
 
 export default ar;

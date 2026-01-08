@@ -208,7 +208,11 @@ const en: TranslationDictionary = {
   notes: "Additional Notes (Optional)",
   notesPlaceholder: "Explain why... (e.g. contains E120)",
   sendReport: "Send Report",
-  reportSent: "Thank you! Report received."
+  reportSent: "Thank you! Report received.",
+  // Resend Email
+  resendEmail: "Resend Link",
+  resending: "Sending...",
+  emailResent: "Link Resent!"
 };
 
 export default en;

@@ -18,8 +18,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // حالة لعرض شاشة "تم إرسال الإيميل" بدلاً من التنبيهات المزعجة
+  // الحالة لعرض شاشة "تم إرسال الإيميل" بدلاً من التنبيهات المزعجة
   const [showEmailSent, setShowEmailSent] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,6 +135,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
     }
   };
 
+  const handleResendEmail = async () => {
+    setIsResending(true);
+    try {
+        const redirectUrl = Capacitor.isNativePlatform() 
+             ? 'io.halalscanner.ai://login-callback' 
+             : window.location.origin;
+
+        const { error } = await supabase.auth.resend({
+            type: 'signup',
+            email: email,
+            options: {
+                emailRedirectTo: redirectUrl
+            }
+        });
+
+        if (error) throw error;
+        alert(t.emailResent);
+    } catch (e: any) {
+        let msg = e.message;
+        if (msg.includes("Rate limit")) msg = language === 'ar' ? "الرجاء الانتظار قليلاً قبل إعادة المحاولة." : "Please wait before retrying.";
+        alert(msg);
+    } finally {
+        setIsResending(false);
+    }
+  };
+
   // --- Success View (Check Email UI) ---
   // هذه الواجهة تظهر فقط بعد التسجيل الناجح
   if (showEmailSent) {
@@ -164,12 +191,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                  : "Please check your inbox (or Spam folder) and click the link to automatically log in to the app."}
              </p>
 
-             <button 
-                onClick={() => { setShowEmailSent(false); setIsLogin(true); }} 
-                className="w-full bg-white text-black font-bold py-3.5 rounded-xl transition hover:bg-gray-200"
-             >
-               {language === 'ar' ? 'فهمت، العودة لتسجيل الدخول' : 'Got it, Back to Login'}
-             </button>
+             <div className="flex flex-col gap-3">
+                 <button 
+                    onClick={() => { setShowEmailSent(false); setIsLogin(true); }} 
+                    className="w-full bg-white text-black font-bold py-3.5 rounded-xl transition hover:bg-gray-200"
+                 >
+                   {language === 'ar' ? 'فهمت، العودة لتسجيل الدخول' : 'Got it, Back to Login'}
+                 </button>
+                 
+                 <button 
+                    onClick={handleResendEmail} 
+                    disabled={isResending}
+                    className="text-emerald-400 text-xs font-bold py-2 hover:text-emerald-300 disabled:opacity-50"
+                 >
+                   {isResending ? t.resending : t.resendEmail}
+                 </button>
+             </div>
           </div>
         </div>
     );
