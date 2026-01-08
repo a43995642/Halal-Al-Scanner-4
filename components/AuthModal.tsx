@@ -47,16 +47,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         if (signInError) throw signInError;
         onSuccess();
         alert(t.loginSuccess);
+        onClose();
       } else {
-        const { error: signUpError } = await supabase.auth.signUp({
+        // Sign Up Logic
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
         });
+        
         if (signUpError) throw signUpError;
-        alert(t.signupSuccess);
-        setIsLogin(true);
+
+        // Check if session was created immediately (Email verification disabled in Supabase)
+        if (data.session) {
+             onSuccess();
+             onClose();
+             alert(t.loginSuccess); // User is logged in directly
+        } else {
+             // User created but waiting for email verification (Standard behavior)
+             alert(t.signupSuccess);
+             setIsLogin(true); // Switch to login view
+        }
       }
-      onClose();
     } catch (err: any) {
       setError(err.message || t.unexpectedError);
     } finally {
@@ -72,12 +83,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         console.log('Starting Native Google Sign-In...');
         
         // Use the Capacitor Plugin to get the ID Token directly
-        // Note: Client ID is handled via initialize() in App.tsx
         const googleUser = await GoogleAuth.signIn();
         
-        // Debugging logs
-        console.log('Google Auth Response:', JSON.stringify(googleUser));
-
         const idToken = googleUser.authentication.idToken;
 
         if (!idToken) {
@@ -98,8 +105,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
       } 
       // 2. WEB FLOW (Browser / PWA)
       else {
-        // Correct Redirect URL for both Web and Android Deep Links
-        // If native platform (but falling back to web flow), use custom scheme
         const redirectUrl = Capacitor.isNativePlatform() 
              ? 'io.halalscanner.ai://login-callback' 
              : window.location.origin;
@@ -128,21 +133,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           msg = String(err);
       }
       
-      // Ignore user cancellation
       if (msg.includes('closed') || msg.includes('cancelled') || msg.includes('Canceled')) {
           return;
       }
 
-      // Handle "Something went wrong" (Common SHA-1/Configuration issue on Android - Error 10)
       if (msg.includes('Something went wrong') || msg.includes('10')) {
-         // REMOVED FALLBACK TO WEB BROWSER
-         // This ensures we stay in the app, but prompts the user to fix the config
-         // We also include DEBUG_WEB_CLIENT_ID in the message to fix the unused variable error
          msg = language === 'ar'
-           ? `فشل تسجيل الدخول (Error 10).\n\nالأسباب المحتملة:\n1. بصمة SHA-1 غير متطابقة (تأكد من استخدام npm run build-apk).\n2. اسم الحزمة في جوجل يجب أن يكون io.halalscanner.ai\n3. لم تضع بريد للدعم في OAuth Consent Screen.\n\nClient ID المستخدم: ${DEBUG_WEB_CLIENT_ID}`
-           : `Login Failed (Error 10).\n\nPossible Causes:\n1. SHA-1 Mismatch (Ensure you use npm run build-apk).\n2. Package name in Google Console MUST be io.halalscanner.ai\n3. Missing Support Email in OAuth Consent Screen.\n\nUsing Client ID: ${DEBUG_WEB_CLIENT_ID}`;
+           ? `فشل تسجيل الدخول (Error 10).\n\nالأسباب المحتملة:\n1. بصمة SHA-1 غير متطابقة.\n2. اسم الحزمة في جوجل يجب أن يكون io.halalscanner.ai`
+           : `Login Failed (Error 10).\n\nPossible Causes:\n1. SHA-1 Mismatch.\n2. Package name in Google Console MUST be io.halalscanner.ai`;
       }
-      // Handle "provider is not enabled"
       else if (msg.includes('provider is not enabled')) {
          msg = language === 'ar' 
            ? "تسجيل الدخول عبر Google غير مفعل في Supabase."
@@ -185,6 +184,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">{t.email}</label>
                <input 
                  type="email" 
+                 name="email"
+                 autoComplete="email"
                  value={email}
                  onChange={(e) => setEmail(e.target.value)}
                  className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white placeholder-gray-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 outline-none transition"
@@ -196,7 +197,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
              <div>
                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">{t.password}</label>
                <input 
-                 type="password" 
+                 type="password"
+                 name="password"
+                 autoComplete={isLogin ? "current-password" : "new-password"}
                  value={password}
                  onChange={(e) => setPassword(e.target.value)}
                  className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white placeholder-gray-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 outline-none transition"
