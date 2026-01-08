@@ -17,6 +17,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showEmailSent, setShowEmailSent] = useState(false);
 
   // Hardcoded for debugging visibility - matches capacitor.config.ts
   const DEBUG_WEB_CLIENT_ID = "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com";
@@ -46,12 +47,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         });
         if (signInError) throw signInError;
         onSuccess();
-        alert(t.loginSuccess);
         onClose();
       } else {
         // Sign Up Logic
-        // Determine redirect URL based on platform to ensure user comes back to the app
-        // and avoids broken website links (Vercel errors).
         const redirectUrl = Capacitor.isNativePlatform() 
              ? 'io.halalscanner.ai://login-callback' 
              : window.location.origin;
@@ -70,11 +68,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         if (data.session) {
              onSuccess();
              onClose();
-             alert(t.loginSuccess); // User is logged in directly
         } else {
-             // User created but waiting for email verification (Standard behavior)
-             alert(t.signupSuccess);
-             setIsLogin(true); // Switch to login view
+             // User created but waiting for email verification
+             setShowEmailSent(true);
         }
       }
     } catch (err: any) {
@@ -87,33 +83,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const handleGoogleLogin = async () => {
     setError(null);
     try {
-      // 1. NATIVE FLOW (Android / iOS)
       if (Capacitor.isNativePlatform()) {
-        console.log('Starting Native Google Sign-In...');
-        
-        // Use the Capacitor Plugin to get the ID Token directly
         const googleUser = await GoogleAuth.signIn();
-        
         const idToken = googleUser.authentication.idToken;
 
-        if (!idToken) {
-           throw new Error('No ID Token returned from Google. Check console.');
-        }
+        if (!idToken) throw new Error('No ID Token returned from Google.');
 
-        // Exchange ID Token for Supabase Session
         const { error } = await supabase.auth.signInWithIdToken({
           provider: 'google',
           token: idToken,
         });
 
         if (error) throw error;
-        
         onSuccess();
         onClose();
-        alert(t.loginSuccess);
-      } 
-      // 2. WEB FLOW (Browser / PWA)
-      else {
+      } else {
         const redirectUrl = Capacitor.isNativePlatform() 
              ? 'io.halalscanner.ai://login-callback' 
              : window.location.origin;
@@ -122,44 +106,43 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           provider: 'google',
           options: {
              redirectTo: redirectUrl,
-             queryParams: {
-                access_type: 'offline',
-                prompt: 'consent'
-             }
+             queryParams: { access_type: 'offline', prompt: 'consent' }
           }
         });
         
         if (error) throw error;
       }
-
     } catch (err: any) {
       console.error("Google Auth Error:", err);
-      let msg = "";
-      
-      if (typeof err === 'object' && err !== null) {
-          msg = err.message || err.error || JSON.stringify(err);
-      } else {
-          msg = String(err);
-      }
-      
-      if (msg.includes('closed') || msg.includes('cancelled') || msg.includes('Canceled')) {
-          return;
-      }
-
-      if (msg.includes('Something went wrong') || msg.includes('10')) {
-         msg = language === 'ar'
-           ? `فشل تسجيل الدخول (Error 10).\n\nالأسباب المحتملة:\n1. بصمة SHA-1 غير متطابقة.\n2. اسم الحزمة في جوجل يجب أن يكون io.halalscanner.ai`
-           : `Login Failed (Error 10).\n\nPossible Causes:\n1. SHA-1 Mismatch.\n2. Package name in Google Console MUST be io.halalscanner.ai`;
-      }
-      else if (msg.includes('provider is not enabled')) {
-         msg = language === 'ar' 
-           ? "تسجيل الدخول عبر Google غير مفعل في Supabase."
-           : "Google Login is not enabled in Supabase.";
-      }
-      
-      setError(msg.length > 400 ? msg.substring(0, 400) + '...' : msg);
+      let msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+      if (msg.includes('closed') || msg.includes('cancelled')) return;
+      setError(msg.length > 100 ? msg.substring(0, 100) + '...' : msg);
     }
   };
+
+  // --- Success View (Check Email) ---
+  if (showEmailSent) {
+    return (
+        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" dir={dir}>
+          <div className="bg-[#1e1e1e] rounded-3xl w-full max-w-sm shadow-2xl border border-white/10 animate-slide-up p-8 text-center">
+             <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/10">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                </svg>
+             </div>
+             <h3 className="text-xl font-bold text-white mb-2">{t.signupSuccess}</h3>
+             <p className="text-gray-400 text-sm leading-relaxed mb-8">
+               {language === 'ar' 
+                 ? `أرسلنا رابط تفعيل إلى ${email}. يرجى التحقق من بريدك (والمجلدات المهملة) والضغط على الرابط للدخول.`
+                 : `We sent a verification link to ${email}. Please check your inbox (and spam) and click the link to log in.`}
+             </p>
+             <button onClick={() => { setShowEmailSent(false); setIsLogin(true); }} className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition">
+               {language === 'ar' ? 'العودة لتسجيل الدخول' : 'Back to Login'}
+             </button>
+          </div>
+        </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" dir={dir}>
