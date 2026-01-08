@@ -310,6 +310,9 @@ function App() {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  
+  // New State for Authentication Success Modal
+  const [showAuthSuccess, setShowAuthSuccess] = useState(false);
 
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
   const [isPremium, setIsPremium] = useState(false);
@@ -494,7 +497,11 @@ function App() {
                              setUserId(data.session.user.id);
                              await fetchUserStats(data.session.user.id);
                              setShowAuthModal(false);
-                             showToast(t.loginSuccess);
+                             // Trigger Success Modal instead of Toast
+                             setShowAuthSuccess(true);
+                             
+                             // Auto hide after 4 seconds if user doesn't interact
+                             setTimeout(() => setShowAuthSuccess(false), 4000);
                          } else {
                              console.error("Session set error:", error);
                          }
@@ -727,7 +734,7 @@ function App() {
       {showPreviewModal && <ImagePreviewModal images={images} onDelete={removeImage} onClose={() => setShowPreviewModal(false)} />}
       {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
       {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={() => { setShowAuthModal(false); fetchUserStats(userId || ''); }} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={() => { setShowAuthModal(false); setShowAuthSuccess(true); fetchUserStats(userId || ''); setTimeout(() => setShowAuthSuccess(false), 4000); }} />}
       
       {showCorrectionModal && result && (
          <CorrectionModal 
@@ -749,6 +756,32 @@ function App() {
       />}
       {showSubscriptionModal && <SubscriptionModal onSubscribe={handleSubscribe} onClose={() => setShowSubscriptionModal(false)} isLimitReached={false} />}
       {toastMessage && <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gray-900/90 text-white px-6 py-3 rounded-full shadow-xl z-[80] animate-fade-in text-sm font-medium backdrop-blur-sm border border-white/10">{toastMessage}</div>}
+
+      {/* Auth Success Modal - New Feature */}
+      {showAuthSuccess && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in p-4">
+            <div className="bg-[#1e1e1e] w-full max-w-sm p-8 rounded-3xl border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.15)] text-center animate-slide-up relative overflow-hidden">
+                {/* Background Decoration */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-green-500"></div>
+                
+                <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-400 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-12 h-12">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                
+                <h2 className="text-2xl font-bold text-white mb-3">{t.authSuccessTitle}</h2>
+                <p className="text-gray-400 text-sm leading-relaxed mb-8">{t.authSuccessDesc}</p>
+                
+                <button 
+                    onClick={() => setShowAuthSuccess(false)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-900/20 active:scale-[0.98]"
+                >
+                    {t.startScanning}
+                </button>
+            </div>
+        </div>
+      )}
 
       {/* --- LAYER 1: VIDEO BACKGROUND --- */}
       <div 

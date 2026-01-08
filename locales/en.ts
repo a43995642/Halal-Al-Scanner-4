@@ -212,7 +212,11 @@ const en: TranslationDictionary = {
   // Resend Email
   resendEmail: "Resend Link",
   resending: "Sending...",
-  emailResent: "Link Resent!"
+  emailResent: "Link Resent!",
+  // Auth Success Modal
+  authSuccessTitle: "Registration Successful!",
+  authSuccessDesc: "Your account has been verified successfully. You can now use the app freely.",
+  startScanning: "Start Scanning"
 };
 
 export default en;

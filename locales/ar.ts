@@ -211,7 +211,11 @@ const ar: TranslationDictionary = {
   reportSent: "شكراً لك! تم استلام تقريرك.",
   resendEmail: "إعادة إرسال الرابط",
   resending: "جاري الإرسال...",
-  emailResent: "تم إرسال رابط جديد!"
+  emailResent: "تم إرسال رابط جديد!",
+  // Auth Success Modal
+  authSuccessTitle: "تم التسجيل بنجاح!",
+  authSuccessDesc: "تم تفعيل حسابك بنجاح. يمكنك الآن استخدام التطبيق بحرية.",
+  startScanning: "بدء المسح الآن"
 };
 
 export default ar;

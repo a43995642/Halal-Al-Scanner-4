@@ -216,4 +216,8 @@ export interface TranslationDictionary {
   resendEmail: string;
   resending: string;
   emailResent: string;
+  // Auth Success Modal
+  authSuccessTitle: string;
+  authSuccessDesc: string;
+  startScanning: string;
 }
