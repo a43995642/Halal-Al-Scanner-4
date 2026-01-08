@@ -100,7 +100,8 @@ if (existsSync(manifestPath)) {
 const stringsPath = join('android', 'app', 'src', 'main', 'res', 'values', 'strings.xml');
 const valuesDir = join('android', 'app', 'src', 'main', 'res', 'values');
 // This is the WEB Client ID (matches capacitor.config.ts), NOT the Android Client ID.
-const WEB_CLIENT_ID = "772072434808-6gr30mgjfg5mn5mapmha31l8ooda84ud.apps.googleusercontent.com";
+// UPDATED: Matches the ID provided in your screenshots
+const WEB_CLIENT_ID = "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com";
 
 console.log('🔧 Checking strings.xml for Google Auth configuration...');
 
