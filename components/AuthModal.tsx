@@ -21,9 +21,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   // حالة لعرض شاشة "تم إرسال الإيميل" بدلاً من التنبيهات المزعجة
   const [showEmailSent, setShowEmailSent] = useState(false);
 
-  // Hardcoded for debugging visibility - matches capacitor.config.ts
-  const DEBUG_WEB_CLIENT_ID = "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com";
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
