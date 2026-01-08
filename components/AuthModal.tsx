@@ -17,6 +17,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // حالة لعرض شاشة "تم إرسال الإيميل" بدلاً من التنبيهات المزعجة
   const [showEmailSent, setShowEmailSent] = useState(false);
 
   // Hardcoded for debugging visibility - matches capacitor.config.ts
@@ -41,18 +43,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
 
     try {
       if (isLogin) {
+        // --- LOGIN FLOW ---
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (signInError) throw signInError;
+        
         onSuccess();
         onClose();
       } else {
-        // Sign Up Logic
+        // --- SIGN UP FLOW ---
+        
+        // تحديد رابط التوجيه بناءً على المنصة
+        // إذا كان تطبيق موبايل -> استخدم الرابط الداخلي
+        // إذا كان متصفح -> استخدم رابط الموقع الحالي
         const redirectUrl = Capacitor.isNativePlatform() 
              ? 'io.halalscanner.ai://login-callback' 
              : window.location.origin;
+
+        console.log('Signing up with redirect to:', redirectUrl);
 
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -64,17 +74,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         
         if (signUpError) throw signUpError;
 
-        // Check if session was created immediately (Email verification disabled in Supabase)
+        // التحقق مما إذا تم إنشاء الجلسة فوراً (في حال كان تأكيد الإيميل معطلاً في Supabase)
         if (data.session) {
              onSuccess();
              onClose();
         } else {
-             // User created but waiting for email verification
+             // تم إنشاء الحساب ولكن يتطلب تفعيل الإيميل
+             // نظهر شاشة جميلة بدلاً من alert
              setShowEmailSent(true);
         }
       }
     } catch (err: any) {
-      setError(err.message || t.unexpectedError);
+      console.error("Auth Error:", err);
+      // تحسين رسائل الخطأ الشائعة
+      let msg = err.message;
+      if (msg.includes('User already registered')) msg = language === 'ar' ? 'هذا البريد مسجل مسبقاً، حاول تسجيل الدخول.' : 'User already registered. Please sign in.';
+      else if (msg.includes('Invalid login credentials')) msg = language === 'ar' ? 'بيانات الدخول غير صحيحة.' : 'Invalid email or password.';
+      
+      setError(msg || t.unexpectedError);
     } finally {
       setIsLoading(false);
     }
@@ -120,30 +137,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
     }
   };
 
-  // --- Success View (Check Email) ---
+  // --- Success View (Check Email UI) ---
+  // هذه الواجهة تظهر فقط بعد التسجيل الناجح
   if (showEmailSent) {
     return (
-        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" dir={dir}>
-          <div className="bg-[#1e1e1e] rounded-3xl w-full max-w-sm shadow-2xl border border-white/10 animate-slide-up p-8 text-center">
-             <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/10">
+        <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" dir={dir}>
+          <div className="bg-[#1e1e1e] rounded-3xl w-full max-w-sm shadow-2xl border border-white/10 animate-slide-up p-8 text-center relative overflow-hidden">
+             
+             {/* زينة خلفية */}
+             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-green-400"></div>
+
+             <div className="w-20 h-20 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(16,185,129,0.2)] border border-emerald-500/20">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
                 </svg>
              </div>
-             <h3 className="text-xl font-bold text-white mb-2">{t.signupSuccess}</h3>
-             <p className="text-gray-400 text-sm leading-relaxed mb-8">
+             
+             <h3 className="text-xl font-bold text-white mb-3">{t.signupSuccess}</h3>
+             
+             <div className="bg-white/5 rounded-xl p-4 mb-6 border border-white/5 text-sm text-gray-300 leading-relaxed">
                {language === 'ar' 
-                 ? `أرسلنا رابط تفعيل إلى ${email}. يرجى التحقق من بريدك (والمجلدات المهملة) والضغط على الرابط للدخول.`
-                 : `We sent a verification link to ${email}. Please check your inbox (and spam) and click the link to log in.`}
+                 ? <>تم إرسال رابط التفعيل إلى: <br/><span className="text-emerald-400 font-bold">{email}</span></>
+                 : <>Verification link sent to: <br/><span className="text-emerald-400 font-bold">{email}</span></>}
+             </div>
+
+             <p className="text-gray-400 text-xs mb-8 leading-relaxed">
+               {language === 'ar' 
+                 ? "يرجى التحقق من بريدك الوارد (أو البريد المهمل/Spam) والضغط على الرابط للدخول تلقائياً للتطبيق."
+                 : "Please check your inbox (or Spam folder) and click the link to automatically log in to the app."}
              </p>
-             <button onClick={() => { setShowEmailSent(false); setIsLogin(true); }} className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition">
-               {language === 'ar' ? 'العودة لتسجيل الدخول' : 'Back to Login'}
+
+             <button 
+                onClick={() => { setShowEmailSent(false); setIsLogin(true); }} 
+                className="w-full bg-white text-black font-bold py-3.5 rounded-xl transition hover:bg-gray-200"
+             >
+               {language === 'ar' ? 'فهمت، العودة لتسجيل الدخول' : 'Got it, Back to Login'}
              </button>
           </div>
         </div>
     );
   }
 
+  // --- Main Auth Form ---
   return (
     <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" dir={dir}>
       <div className="bg-[#1e1e1e] rounded-3xl w-full max-w-sm shadow-2xl border border-white/10 animate-slide-up flex flex-col overflow-hidden">
@@ -201,7 +236,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
              </div>
 
              {error && (
-               <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl text-center whitespace-pre-wrap leading-relaxed break-words">
+               <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl text-center whitespace-pre-wrap leading-relaxed break-words animate-fade-in">
                  {error}
                </div>
              )}
@@ -209,8 +244,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
              <button 
                type="submit" 
                disabled={isLoading}
-               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-900/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-900/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
              >
+               {isLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
                {isLoading ? (isLogin ? t.loggingIn : t.signingUp) : (isLogin ? t.signIn : t.signUp)}
              </button>
           </form>
