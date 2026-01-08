@@ -1,3 +1,4 @@
+
 import { spawn } from 'child_process';
 import { readdirSync, existsSync, chmodSync } from 'fs';
 import { join, resolve } from 'path';
@@ -48,17 +49,25 @@ if (foundCompatibleJDK && javaHome) {
 // 3. Run Gradle Wrapper
 const androidDir = resolve('android');
 const isWin = process.platform === 'win32';
-const gradleCmd = isWin ? 'gradlew.bat' : './gradlew';
-const args = ['clean', 'assembleDebug', '--stacktrace'];
+let gradleCmd = isWin ? 'gradlew.bat' : './gradlew';
 
-// Ensure executable permission
-if (!isWin) {
+// Check if wrapper exists
+const wrapperPath = join(androidDir, isWin ? 'gradlew.bat' : 'gradlew');
+if (!existsSync(wrapperPath)) {
+    console.warn(`⚠️ Gradle Wrapper not found at ${wrapperPath}.`);
+    console.warn(`⚠️ Falling back to system 'gradle' command.`);
+    // Fallback to system gradle if local wrapper is missing
+    gradleCmd = 'gradle';
+} else if (!isWin) {
+    // Ensure executable permission if it exists
     try {
-        chmodSync(join(androidDir, 'gradlew'), '755');
+        chmodSync(wrapperPath, '755');
     } catch (e) {
         console.warn("⚠️ Could not chmod gradlew, hoping for the best.");
     }
 }
+
+const args = ['clean', 'assembleDebug', '--stacktrace'];
 
 console.log(`🔨 Executing Gradle in: ${androidDir}`);
 console.log(`👉 Command: ${gradleCmd} ${args.join(' ')}`);

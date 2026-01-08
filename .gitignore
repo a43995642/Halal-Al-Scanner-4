@@ -127,8 +127,9 @@ android/app/build
 android/.gradle
 android/local.properties
 android/captures
-android/gradlew
-android/gradlew.bat
+# Removed gradlew from ignore list so it works in CI
+# android/gradlew 
+# android/gradlew.bat
 # We usually keep android/ folder but ignore build artifacts
 
 # macOS

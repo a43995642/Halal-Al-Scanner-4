@@ -17,9 +17,9 @@
     "setup-android": "npx cap telemetry off && (npx cap add android || echo 'Android platform already exists')",
     "fix-gradle": "node scripts/fix-gradle-wrapper.js",
     "force-java": "node scripts/force-java-compatibility.js",
-    "build-apk": "npm run get-sha1 && npm run build && npx cap sync && npm run set-icon && node update-manifest.js && node scripts/smart-build.js",
+    "build-apk": "npm run get-sha1 && npm run build && npm run setup-android && npx cap sync && npm run set-icon && node update-manifest.js && node scripts/smart-build.js",
     "create-release-key": "node scripts/create-release-key.js",
-    "build-aab": "npm run create-release-key && npm run build && npx cap sync && npm run set-icon && node update-manifest.js && cd android && chmod +x gradlew && ./gradlew clean bundleRelease",
+    "build-aab": "npm run create-release-key && npm run build && npm run setup-android && npx cap sync && npm run set-icon && node update-manifest.js && cd android && chmod +x gradlew && ./gradlew clean bundleRelease",
     "get-sha1": "node scripts/get-sha1.js"
   },
   "engines": {
