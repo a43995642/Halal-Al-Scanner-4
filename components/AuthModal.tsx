@@ -50,9 +50,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         onClose();
       } else {
         // Sign Up Logic
+        // Determine redirect URL based on platform to ensure user comes back to the app
+        // and avoids broken website links (Vercel errors).
+        const redirectUrl = Capacitor.isNativePlatform() 
+             ? 'io.halalscanner.ai://login-callback' 
+             : window.location.origin;
+
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: redirectUrl
+          }
         });
         
         if (signUpError) throw signUpError;
