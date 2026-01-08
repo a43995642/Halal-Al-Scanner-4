@@ -1,5 +1,5 @@
 
-// ... (imports remain the same)
+// ... (keep imports)
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBadge } from './components/StatusBadge';
 import { SubscriptionModal } from './components/SubscriptionModal';
@@ -456,7 +456,8 @@ function App() {
         }
 
         // Listen for Auth Changes (Sign In, Token Refresh, Sign Out)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+        // Renamed 'event' to '_event' to fix TS unused variable error
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: any, session: any) => {
              const newUid = session?.user?.id;
              const isAuthUser = session?.user?.role === 'authenticated';
 
@@ -500,7 +501,8 @@ function App() {
                      const refreshToken = params.get('refresh_token');
                      
                      if (accessToken && refreshToken) {
-                         const { data, error } = await supabase.auth.setSession({
+                         // Removed unused 'data' to fix TS error
+                         const { error } = await supabase.auth.setSession({
                              access_token: accessToken,
                              refresh_token: refreshToken
                          });
