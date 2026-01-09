@@ -474,25 +474,42 @@ function App() {
         }
 
         // Listen for Auth Changes (Sign In, Token Refresh, Sign Out)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: any, session: any) => {
+        // Explicitly handling SIGNED_IN event to close modals on successful verification
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
              const newUid = session?.user?.id;
              const isAuthUser = session?.user?.role === 'authenticated';
+
+             console.log("Auth State Changed:", event);
+
+             // Handle Email Verification / Sign In specific event
+             if (event === 'SIGNED_IN' && isAuthUser) {
+                 if (stateRef.current.showAuthModal) {
+                     console.log("User successfully signed in, closing modal.");
+                     setShowAuthModal(false);
+                     setShowAuthSuccess(true);
+                     setToastMessage(t.authSuccessDesc);
+                     setTimeout(() => setShowAuthSuccess(false), 4000);
+                 }
+             }
 
              if (newUid) {
                  setUserId(newUid);
                  await fetchUserStats(newUid);
                  PurchaseService.logIn(newUid);
 
-                 // 🔴 Fix: If user is authenticated and modal is open, CLOSE IT
+                 // Double check: If user is authenticated and modal is STILL open, CLOSE IT
                  if (isAuthUser && stateRef.current.showAuthModal) {
-                     console.log("User authenticated, closing modal...");
+                     console.log("User authenticated (fallback), closing modal...");
                      setShowAuthModal(false);
                      setShowAuthSuccess(true);
                      setTimeout(() => setShowAuthSuccess(false), 4000);
                  }
-             } else {
+             } else if (event === 'SIGNED_OUT') {
                  setUserId(null);
                  PurchaseService.logOut();
+                 // Ensure modals are closed
+                 setShowAuthModal(false);
+                 setShowAuthSuccess(false);
              }
         });
         authSubscription = subscription;
@@ -523,13 +540,11 @@ function App() {
                              refresh_token: refreshToken
                          });
                          
+                         // Note: onAuthStateChange will fire with SIGNED_IN if this succeeds
                          if (error) {
                              console.error("Session set error:", error);
                          } else if (data.session) {
-                             console.log("Deep link session set successfully.");
-                             setShowAuthModal(false);
-                             setShowAuthSuccess(true);
-                             setTimeout(() => setShowAuthSuccess(false), 4000);
+                             console.log("Deep link session set successfully. Waiting for listener...");
                          }
                      }
                  }
