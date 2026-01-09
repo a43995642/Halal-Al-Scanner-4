@@ -1,5 +1,5 @@
 
-// ... (imports)
+// ... imports remain the same
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBadge } from './components/StatusBadge';
 import { SubscriptionModal } from './components/SubscriptionModal';
@@ -438,16 +438,22 @@ function App() {
     }
 
     // New: Listener for App Resume to force check auth state
-    const resumeListener = CapacitorApp.addListener('resume', async () => {
-      console.log("App resumed, checking auth...");
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user && stateRef.current.showAuthModal) {
-          console.log("Session valid on resume, closing modal.");
-          setShowAuthModal(false);
-          setShowAuthSuccess(true);
-          setTimeout(() => setShowAuthSuccess(false), 4000);
-      }
-    });
+    let resumeListener: any;
+    const setupResumeListener = async () => {
+      resumeListener = await CapacitorApp.addListener('resume', async () => {
+        console.log("App resumed, checking auth...");
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && stateRef.current.showAuthModal) {
+            console.log("Session valid on resume, closing modal.");
+            setShowAuthModal(false);
+            setShowAuthSuccess(true);
+            setTimeout(() => setShowAuthSuccess(false), 4000);
+        }
+      });
+    };
+    setupResumeListener();
+
+    let authSubscription: any;
 
     const initSupabase = async () => {
       try {
@@ -468,7 +474,6 @@ function App() {
         }
 
         // Listen for Auth Changes (Sign In, Token Refresh, Sign Out)
-        // Renamed 'event' to '_event' to fix TS unused variable error
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: any, session: any) => {
              const newUid = session?.user?.id;
              const isAuthUser = session?.user?.role === 'authenticated';
@@ -479,7 +484,6 @@ function App() {
                  PurchaseService.logIn(newUid);
 
                  // 🔴 Fix: If user is authenticated and modal is open, CLOSE IT
-                 // This catches Deep Link logins and Session Refreshes
                  if (isAuthUser && stateRef.current.showAuthModal) {
                      console.log("User authenticated, closing modal...");
                      setShowAuthModal(false);
@@ -491,6 +495,7 @@ function App() {
                  PurchaseService.logOut();
              }
         });
+        authSubscription = subscription;
 
         CapacitorApp.addListener('appUrlOpen', async ({ url }) => {
             console.log('App deep link opened:', url);
@@ -518,11 +523,9 @@ function App() {
                              refresh_token: refreshToken
                          });
                          
-                         // Note: onAuthStateChange will also fire if this succeeds
                          if (error) {
                              console.error("Session set error:", error);
                          } else if (data.session) {
-                             // Force close modal on successful deep link session set
                              console.log("Deep link session set successfully.");
                              setShowAuthModal(false);
                              setShowAuthSuccess(true);
@@ -532,8 +535,6 @@ function App() {
                  }
             }
         });
-
-        return () => subscription.unsubscribe();
 
       } catch (err) {}
     };
@@ -551,7 +552,12 @@ function App() {
     return () => {
       if (progressInterval.current) clearInterval(progressInterval.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
-      // Remove resume listener if possible, though React useEffect cleanup handles component unmounts
+      if (resumeListener) {
+          resumeListener.remove();
+      }
+      if (authSubscription) {
+          authSubscription.unsubscribe();
+      }
     };
   }, []);
 
