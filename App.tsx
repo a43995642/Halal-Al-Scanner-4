@@ -1,5 +1,5 @@
 
-// ... (keep imports)
+// ... (imports)
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBadge } from './components/StatusBadge';
 import { SubscriptionModal } from './components/SubscriptionModal';
@@ -437,6 +437,18 @@ function App() {
       } catch (e) {}
     }
 
+    // New: Listener for App Resume to force check auth state
+    const resumeListener = CapacitorApp.addListener('resume', async () => {
+      console.log("App resumed, checking auth...");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && stateRef.current.showAuthModal) {
+          console.log("Session valid on resume, closing modal.");
+          setShowAuthModal(false);
+          setShowAuthSuccess(true);
+          setTimeout(() => setShowAuthSuccess(false), 4000);
+      }
+    });
+
     const initSupabase = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -501,8 +513,7 @@ function App() {
                      const refreshToken = params.get('refresh_token');
                      
                      if (accessToken && refreshToken) {
-                         // Removed unused 'data' to fix TS error
-                         const { error } = await supabase.auth.setSession({
+                         const { data, error } = await supabase.auth.setSession({
                              access_token: accessToken,
                              refresh_token: refreshToken
                          });
@@ -510,6 +521,12 @@ function App() {
                          // Note: onAuthStateChange will also fire if this succeeds
                          if (error) {
                              console.error("Session set error:", error);
+                         } else if (data.session) {
+                             // Force close modal on successful deep link session set
+                             console.log("Deep link session set successfully.");
+                             setShowAuthModal(false);
+                             setShowAuthSuccess(true);
+                             setTimeout(() => setShowAuthSuccess(false), 4000);
                          }
                      }
                  }
@@ -534,6 +551,7 @@ function App() {
     return () => {
       if (progressInterval.current) clearInterval(progressInterval.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
+      // Remove resume listener if possible, though React useEffect cleanup handles component unmounts
     };
   }, []);
 
