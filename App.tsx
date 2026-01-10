@@ -1,4 +1,3 @@
-
 // ... imports remain the same
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBadge } from './components/StatusBadge';
@@ -324,6 +323,7 @@ function App() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ... (Rest of component setup)
   const { 
     videoRef, 
     isCapturing, 
@@ -953,7 +953,7 @@ function App() {
       </div>
 
       {/* --- LAYER 4: BOTTOM BAR --- */}
-      <div className={`absolute bottom-0 left-0 right-0 z-30 pt-20 pb-[calc(env(safe-area-inset-bottom)+2rem)] transition-all duration-500 ease-in-out ${(isFocusMode && !result) || isLoading ? 'bg-transparent pointer-events-none' : 'bg-gradient-to-t from-black via-black/80 to-transparent'}`}>
+      <div className={`absolute bottom-0 left-0 right-0 z-30 pb-[calc(env(safe-area-inset-bottom)+2rem)] transition-all duration-500 ease-in-out ${(isFocusMode && !result) || isLoading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
          
          <div className="flex flex-col gap-6 px-6 max-w-md mx-auto">
             
