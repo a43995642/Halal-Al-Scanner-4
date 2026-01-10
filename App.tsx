@@ -961,9 +961,9 @@ function App() {
                
                {/* LEFT: Gallery OR Preview */}
                <div className="flex flex-col items-center gap-1 w-20">
-                  {!isLoading && (
+                  {!isLoading && !result && (
                     <>
-                      {images.length > 0 && !result ? (
+                      {images.length > 0 ? (
                          <button 
                            onClick={() => setShowPreviewModal(true)} 
                            className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white/50 transition shadow-lg active:scale-95`}
@@ -975,12 +975,12 @@ function App() {
                             </div>
                          </button>
                       ) : (
-                         <label className={`w-12 h-12 rounded-full flex items-center justify-center transition border border-white/10 cursor-pointer active:scale-90 ${isFocusMode && !result ? 'bg-black/40 backdrop-blur-md hover:bg-black/60' : 'bg-[#2c2c2c] hover:bg-[#3d3d3d]'}`}>
+                         <label className={`w-12 h-12 rounded-full flex items-center justify-center transition border border-white/10 cursor-pointer active:scale-90 ${isFocusMode ? 'bg-black/40 backdrop-blur-md hover:bg-black/60' : 'bg-[#2c2c2c] hover:bg-[#3d3d3d]'}`}>
                             <input type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" disabled={!isPremium && scanCount >= FREE_SCANS_LIMIT} />
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                          </label>
                       )}
-                      <span className={`text-[10px] font-medium transition-opacity duration-300 ${isFocusMode && !result ? 'opacity-0' : 'text-gray-400'}`}>{images.length > 0 && !result ? t.selectedImages : t.btnGallery}</span>
+                      <span className={`text-[10px] font-medium transition-opacity duration-300 ${isFocusMode ? 'opacity-0' : 'text-gray-400'}`}>{images.length > 0 ? t.selectedImages : t.btnGallery}</span>
                     </>
                   )}
                </div>
@@ -1004,9 +1004,9 @@ function App() {
 
                {/* RIGHT: Dynamic (Analyze OR Barcode) */}
                <div className="flex flex-col items-center gap-1 w-20">
-                  {!isLoading && (
+                  {!isLoading && !result && (
                     <>
-                      {images.length > 0 && !result ? (
+                      {images.length > 0 ? (
                          <>
                             <button 
                                onClick={handleAnalyze} 
@@ -1016,14 +1016,14 @@ function App() {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                                 </svg>
                             </button>
-                            <span className={`text-[10px] font-bold transition-opacity duration-300 ${isFocusMode && !result ? 'opacity-0' : 'text-emerald-400'}`}>{t.scanImagesBtn}</span>
+                            <span className={`text-[10px] font-bold transition-opacity duration-300 ${isFocusMode ? 'opacity-0' : 'text-emerald-400'}`}>{t.scanImagesBtn}</span>
                          </>
                       ) : (
                          <>
-                            <button onClick={() => setShowBarcodeModal(true)} className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition border border-white/10 ${isFocusMode && !result ? 'bg-black/40 backdrop-blur-md hover:bg-black/60' : 'bg-[#2c2c2c] hover:bg-[#3d3d3d]'}`}>
-                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" /></svg>
+                            <button onClick={() => setShowBarcodeModal(true)} className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition border border-white/10 ${isFocusMode ? 'bg-black/40 backdrop-blur-md hover:bg-black/60' : 'bg-[#2c2c2c] hover:bg-[#3d3d3d]'}`}>
+                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" /></svg>
                             </button>
-                            <span className={`text-[10px] font-medium transition-opacity duration-300 ${isFocusMode && !result ? 'opacity-0' : 'text-gray-400'}`}>{t.btnBarcode}</span>
+                            <span className={`text-[10px] font-medium transition-opacity duration-300 ${isFocusMode ? 'opacity-0' : 'text-gray-400'}`}>{t.btnBarcode}</span>
                          </>
                       )}
                     </>
