@@ -314,7 +314,6 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   
-  // New State for Authentication Success Modal
   const [showAuthSuccess, setShowAuthSuccess] = useState(false);
 
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
@@ -322,12 +321,10 @@ function App() {
   const [scanCount, setScanCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   
-  // FIXED: Removed setLanguage from destructuring to avoid unused variable error (TS6133)
   const { language, t } = useLanguage();
   const abortControllerRef = useRef<AbortController | null>(null);
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ... (Rest of component setup)
   const { 
     videoRef, 
     isCapturing, 
@@ -351,16 +348,11 @@ function App() {
     showPreviewModal, result, images, isLoading
   });
 
-  // ... (Effects and standard logic remain the same)
-  // [Code block omitted for brevity, keeping existing logic intact]
-  // Note: Only UI elements for rendering are updated below.
-
   useEffect(() => {
     document.documentElement.classList.add('dark');
     PurchaseService.initialize();
   }, []);
   
-  // ... (Back button handlers and listeners - same as original)
   useEffect(() => {
     let backButtonListener: any;
     const setupBackButton = async () => {
@@ -396,6 +388,18 @@ function App() {
     return () => { if (interval) clearInterval(interval); };
   }, [isLoading, images.length]);
 
+  // Helper functions used in auth logic
+  const fetchUserStats = async (uid: string) => { 
+    const { data } = await supabase.from('user_stats').select('scan_count, is_premium').eq('id', uid).single(); 
+    if (data) { 
+        setScanCount(data.scan_count); 
+        if (!Capacitor.isNativePlatform()) { 
+            setIsPremium(data.is_premium); 
+            secureStorage.setItem('isPremium', data.is_premium); 
+        } 
+    } 
+  };
+
   useEffect(() => {
     try { GoogleAuth.initialize({ clientId: WEB_CLIENT_ID, scopes: ['profile', 'email'], grantOfflineAccess: false }); } catch (e) {}
     const accepted = localStorage.getItem('halalScannerTermsAccepted');
@@ -403,12 +407,33 @@ function App() {
     const savedHistory = localStorage.getItem('halalScannerHistory');
     if (savedHistory) { try { setHistory(JSON.parse(savedHistory)); } catch (e) {} }
     
-    // Auth logic (same as original)
-    // ...
+    // Auth logic - Fix for unused setUserId
+    const initAuth = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            setUserId(session.user.id);
+            fetchUserStats(session.user.id);
+        }
+    };
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+            setUserId(session.user.id);
+            fetchUserStats(session.user.id);
+        } else {
+            setUserId(null);
+            setScanCount(0);
+            setIsPremium(false);
+        }
+    });
+
+    return () => {
+        subscription.unsubscribe();
+    };
   }, []);
   
-  // ... (Helper functions: fetchUserStats, showToast, saveToHistory, handleCaptureClick, handleAnalyze, resetApp, removeImage, handleFileSelect, handleBarcodeSearch, handleAnalyzeText, handleSubscribe)
-  const fetchUserStats = async (uid: string) => { const { data } = await supabase.from('user_stats').select('scan_count, is_premium').eq('id', uid).single(); if (data) { setScanCount(data.scan_count); if (!Capacitor.isNativePlatform()) { setIsPremium(data.is_premium); secureStorage.setItem('isPremium', data.is_premium); } } };
+  // Helper functions
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
   const saveToHistory = (scanResult: ScanResult, thumbnail?: string) => { const newItem: ScanHistoryItem = { id: Date.now().toString(), date: Date.now(), result: scanResult, thumbnail }; const updatedHistory = [newItem, ...history].slice(0, 30); setHistory(updatedHistory); localStorage.setItem('halalScannerHistory', JSON.stringify(updatedHistory)); };
   
@@ -666,7 +691,7 @@ function App() {
                       ) : (
                          <>
                             <button onClick={() => setShowBarcodeModal(true)} className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition border border-white/10 ${isFocusMode ? 'bg-black/40 backdrop-blur-md hover:bg-black/60' : 'bg-[#2c2c2c] hover:bg-[#3d3d3d]'}`}>
-                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" /></svg>
+                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" /></svg>
                             </button>
                             <span className={`text-[10px] font-medium transition-opacity duration-300 ${isFocusMode ? 'opacity-0' : 'text-gray-400'}`}>{t.btnBarcode}</span>
                          </>
