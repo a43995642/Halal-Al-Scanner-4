@@ -80,32 +80,32 @@ export const useCamera = () => {
         videoRef.current.play().catch(e => console.warn("Video play interrupted:", e));
       }
 
-      // --- ADVANCED ISP TUNING FOR TEXT ---
+      // --- NATURAL ISP TUNING ---
       try {
         const track = stream.getVideoTracks()[0];
         const capabilities = (track.getCapabilities ? track.getCapabilities() : {}) as any;
         const advancedConstraints: any = [];
 
-        // A. Focus: Sharpness is critical.
+        // A. Focus: Continuous is best for ease of use
         if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
            advancedConstraints.push({ focusMode: 'continuous' });
         }
 
-        // B. Exposure: We want "balanced" to "slightly bright" for paper documents.
-        // We use continuous auto-exposure but bias it slightly up.
+        // B. Exposure: Continuous Auto Exposure (Natural)
         if (capabilities.exposureMode && capabilities.exposureMode.includes('continuous')) {
            advancedConstraints.push({ exposureMode: 'continuous' });
         }
 
-        // C. Exposure Compensation: +0.33 to +0.5 EV
-        // Just enough to brighten paper background without washing out black text.
-        // Avoid going too high to prevent ISO noise.
+        // C. Exposure Compensation: 0 (Natural)
+        // Ensure no artificial brightening or darkening occurs.
         if (capabilities.exposureCompensation) {
             const min = capabilities.exposureCompensation.min;
             const max = capabilities.exposureCompensation.max;
             const step = capabilities.exposureCompensation.step;
             
-            let targetEV = 0.5; // Slight boost for text readability
+            let targetEV = 0; 
+            
+            // Clamp to device limits
             if (targetEV > max) targetEV = max;
             if (targetEV < min) targetEV = min;
             if (step > 0) {
@@ -114,7 +114,7 @@ export const useCamera = () => {
             advancedConstraints.push({ exposureCompensation: targetEV });
         }
 
-        // D. White Balance: Accurate white balance keeps paper looking white, not yellow/blue.
+        // D. White Balance: Continuous (Natural)
         if (capabilities.whiteBalanceMode && capabilities.whiteBalanceMode.includes('continuous')) {
             advancedConstraints.push({ whiteBalanceMode: 'continuous' });
         }
@@ -198,12 +198,10 @@ export const useCamera = () => {
         let imageBlob: Blob | null = null;
 
         // --- METHOD 1: Native ImageCapture (The "Pro" Way) ---
-        // Attempts to use the hardware ISP to take a real photo (HDR, Denoise, Sharpening).
-        // This produces significantly better text clarity than grabbing a video frame.
+        // Attempts to use the hardware ISP to take a real photo.
         if ('ImageCapture' in window) {
             try {
                 const imageCapture = new (window as any).ImageCapture(track);
-                // takePhoto() triggers the still-image pipeline (higher res, better processing)
                 imageBlob = await imageCapture.takePhoto();
                 console.log("Captured via ImageCapture API (High Quality)");
             } catch (err) {
@@ -212,8 +210,6 @@ export const useCamera = () => {
         }
 
         // --- METHOD 2: Canvas Fallback (The "Fast" Way) ---
-        // Used if ImageCapture is not supported or fails.
-        // Optimized specifically for OCR: Grayscale + High Contrast.
         if (!imageBlob) {
             const video = videoRef.current;
             const canvas = document.createElement('canvas');
@@ -223,12 +219,9 @@ export const useCamera = () => {
             
             const context = canvas.getContext('2d');
             if (context) {
-                // OCR PRE-PROCESSING FILTERS:
-                // 1. Grayscale (100%): Removes color noise (chroma noise) which confuses OCR.
-                // 2. Contrast (140%): Makes black text darker and white paper brighter.
-                // 3. Brightness (105%): Compensates for contrast darkening.
-                // 4. Sharpening: (Simulated via high resolution + contrast)
-                context.filter = 'grayscale(100%) contrast(140%) brightness(105%)';
+                // NATURAL PROCESSING:
+                // No filters. Capture exactly what the user sees.
+                context.filter = 'none';
                 
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
