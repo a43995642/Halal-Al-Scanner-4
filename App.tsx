@@ -417,7 +417,8 @@ function App() {
     };
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // FIXED: Added types 'any' to parameters to satisfy strict mode
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
         if (session?.user) {
             setUserId(session.user.id);
             fetchUserStats(session.user.id);
