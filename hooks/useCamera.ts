@@ -52,16 +52,18 @@ export const useCamera = () => {
     }
 
     try {
-      // 1. OCR-First Constraints
+      // 1. OCR-First Constraints (High Resolution & Sharpness Priority)
       // Request 4K resolution (3840x2160) or highest available.
       // High resolution is the #1 factor for OCR accuracy.
-      // We prioritize resolution over frame rate.
+      // We prioritize resolution over frame rate significantly.
       const constraints: MediaStreamConstraints = {
         video: { 
             facingMode: 'environment',
+            // Try to get max resolution for OCR
             width: { ideal: 3840 }, 
             height: { ideal: 2160 },
-            frameRate: { ideal: 30, max: 30 }
+            // Lower framerate is acceptable for better exposure per frame
+            frameRate: { ideal: 24, max: 30 } 
         },
         audio: false
       };
@@ -80,44 +82,53 @@ export const useCamera = () => {
         videoRef.current.play().catch(e => console.warn("Video play interrupted:", e));
       }
 
-      // --- NATURAL ISP TUNING ---
+      // --- OCR ISP TUNING ---
+      // Apply advanced constraints to optimize specifically for TEXT READABILITY
       try {
         const track = stream.getVideoTracks()[0];
         const capabilities = (track.getCapabilities ? track.getCapabilities() : {}) as any;
         const advancedConstraints: any = [];
 
-        // A. Focus: Continuous is best for ease of use
+        // A. Focus: Force Continuous (Sharpness Priority)
+        // Essential for macro shots of ingredients
         if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
            advancedConstraints.push({ focusMode: 'continuous' });
         }
 
-        // B. Exposure: Continuous Auto Exposure (Natural)
+        // B. Exposure: Continuous Auto Exposure
         if (capabilities.exposureMode && capabilities.exposureMode.includes('continuous')) {
            advancedConstraints.push({ exposureMode: 'continuous' });
         }
 
-        // C. Exposure Compensation: 0 (Natural)
-        // Ensure no artificial brightening or darkening occurs.
+        // C. Exposure Compensation: POSITIVE BIAS (+0.5 EV)
+        // For OCR, slightly brighter is better than dark. We want to eliminate shadows on text.
+        // We target +0.5 EV to brighten the image without washing out details.
         if (capabilities.exposureCompensation) {
             const min = capabilities.exposureCompensation.min;
             const max = capabilities.exposureCompensation.max;
             const step = capabilities.exposureCompensation.step;
             
-            let targetEV = 0; 
+            // Target +0.5 EV (or close to it)
+            let targetEV = 0.5; 
             
             // Clamp to device limits
             if (targetEV > max) targetEV = max;
             if (targetEV < min) targetEV = min;
+            
+            // Align to step
             if (step > 0) {
                 targetEV = Math.round((targetEV - min) / step) * step + min;
             }
             advancedConstraints.push({ exposureCompensation: targetEV });
         }
 
-        // D. White Balance: Continuous (Natural)
+        // D. White Balance: Continuous (Neutral colors help OCR)
         if (capabilities.whiteBalanceMode && capabilities.whiteBalanceMode.includes('continuous')) {
             advancedConstraints.push({ whiteBalanceMode: 'continuous' });
         }
+
+        // E. Zoom: If supported, slight optical zoom can help avoid shadow from phone
+        // Resetting to 1.0 ensures full FOV, user can move closer.
 
         // Torch Check
         if (capabilities.torch) setHasTorch(true);
@@ -142,7 +153,7 @@ export const useCamera = () => {
     try {
       const image = await Camera.getPhoto({
         quality: 100, // Max quality for OCR
-        allowEditing: false,
+        allowEditing: false, // Do not let user crop/filter, we want raw high res
         resultType: CameraResultType.Uri, 
         source: CameraSource.Camera,
         correctOrientation: true, 
@@ -197,35 +208,36 @@ export const useCamera = () => {
         const track = streamRef.current.getVideoTracks()[0];
         let imageBlob: Blob | null = null;
 
-        // --- METHOD 1: Native ImageCapture (The "Pro" Way) ---
-        // Attempts to use the hardware ISP to take a real photo.
+        // --- METHOD 1: Native ImageCapture (High Res) ---
+        // Prioritize taking a real photo using the hardware ISP for max resolution
         if ('ImageCapture' in window) {
             try {
                 const imageCapture = new (window as any).ImageCapture(track);
                 imageBlob = await imageCapture.takePhoto();
-                console.log("Captured via ImageCapture API (High Quality)");
+                console.log("Captured via ImageCapture API (High Resolution OCR)");
             } catch (err) {
                 console.warn("ImageCapture API failed, falling back to Canvas", err);
             }
         }
 
-        // --- METHOD 2: Canvas Fallback (The "Fast" Way) ---
+        // --- METHOD 2: Canvas Fallback (Fast) ---
         if (!imageBlob) {
             const video = videoRef.current;
             const canvas = document.createElement('canvas');
-            // Use intrinsic video size (likely 4K if negotiation succeeded)
+            // Use intrinsic video size (4K if negotiation succeeded)
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             
             const context = canvas.getContext('2d');
             if (context) {
-                // NATURAL PROCESSING:
-                // No filters. Capture exactly what the user sees.
+                // NATURAL PROCESSING FOR OCR:
+                // No blur filters. We want raw sharpness.
                 context.filter = 'none';
+                context.imageSmoothingEnabled = false; // Preserve sharp edges
                 
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                // Max quality JPEG
+                // Max quality JPEG (0.95) to prevent compression artifacts on text
                 const base64 = canvas.toDataURL('image/jpeg', 0.95);
                 onCapture(base64);
             }

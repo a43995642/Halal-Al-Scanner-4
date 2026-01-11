@@ -33,8 +33,9 @@ const vibrate = (pattern: number | number[] = 10) => {
   }
 };
 
-// Utility to compress images
-const compressImage = (base64Str: string, maxWidth = 800, quality = 0.6): Promise<string> => {
+// Utility to optimize images for OCR (Sharpen, Contrast, High Res)
+// REPLACED: compressImage -> optimizeImageForOCR
+const optimizeImageForOCR = (base64Str: string, maxWidth = 2000, quality = 0.9): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = base64Str;
@@ -42,15 +43,32 @@ const compressImage = (base64Str: string, maxWidth = 800, quality = 0.6): Promis
       const canvas = document.createElement('canvas');
       let width = img.width;
       let height = img.height;
+      
+      // OCR requires high resolution. Do NOT downscale aggressively.
+      // 2000px width is a good balance for ingredients lists.
       if (width > maxWidth) {
         height = Math.round((height * maxWidth) / width);
         width = maxWidth;
       }
+      
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
+        // --- OCR PRE-PROCESSING PIPELINE ---
+        
+        // 1. Contrast & Brightness Enhancement
+        // Boosting contrast helps separate text from background.
+        // Slight brightness boost helps in low light.
+        // Note: 'contrast(1.2)' increases contrast by 20%.
+        ctx.filter = 'contrast(1.15) brightness(1.05)';
+        
+        // 2. Draw Image
         ctx.drawImage(img, 0, 0, width, height);
+        
+        // Note: Real "sharpening" via convolution matrix is too slow for JS main thread.
+        // The contrast boost combined with high resolution is usually sufficient for Gemini.
+        
         resolve(canvas.toDataURL('image/jpeg', quality));
       } else {
         resolve(base64Str);
@@ -452,12 +470,32 @@ function App() {
     setIsLoading(true); setError(null); setAnalyzedTextContent(null); setProgress(5); setCurrentPreviewIndex(0);
     const controller = new AbortController(); abortControllerRef.current = controller;
     try {
-      const quality = useLowQuality ? 0.6 : 0.8; const width = useLowQuality ? 800 : 1024;
-      const compressedImages = await Promise.all(images.map(img => compressImage(img, width, quality)));
+      // 1. OCR Optimization: Use 2000px width and 0.9 quality
+      // We pass the new OCR optimization function
+      const width = useLowQuality ? 1024 : 2000;
+      const quality = useLowQuality ? 0.7 : 0.9;
+      
+      const compressedImages = await Promise.all(images.map(img => optimizeImageForOCR(img, width, quality)));
+      
       setProgress(40); progressInterval.current = setInterval(() => { setProgress(prev => (prev >= 90 ? 90 : prev + 2)); }, 200);
+      
+      // Analyze with optimized images
       const scanResult = await analyzeImage(compressedImages, userId || undefined, true, true, language, controller.signal);
+      
       clearInterval(progressInterval.current as any); setProgress(100);
-      if (scanResult.confidence === 0) { setError(scanResult.reason); } else { vibrate([50, 100]); setResult(scanResult); if (userId) await fetchUserStats(userId); compressImage(compressedImages[0], 200, 0.6).then(thumb => saveToHistory(scanResult, thumb)).catch(() => saveToHistory(scanResult)); }
+      
+      if (scanResult.confidence === 0) { 
+          setError(scanResult.reason); 
+      } else { 
+          vibrate([50, 100]); 
+          setResult(scanResult); 
+          if (userId) await fetchUserStats(userId); 
+          
+          // Save small thumbnail for history
+          optimizeImageForOCR(compressedImages[0], 300, 0.6)
+            .then(thumb => saveToHistory(scanResult, thumb))
+            .catch(() => saveToHistory(scanResult)); 
+      }
     } catch (err: any) { if (err.name === 'AbortError') return; setError(t.unexpectedError); } finally { setIsLoading(false); abortControllerRef.current = null; }
   };
 
