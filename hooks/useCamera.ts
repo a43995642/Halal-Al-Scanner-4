@@ -52,13 +52,16 @@ export const useCamera = () => {
     }
 
     try {
-      // 1. Base Constraints - High Resolution for OCR
+      // 1. OCR-First Constraints
+      // Request 4K resolution (3840x2160) or highest available.
+      // High resolution is the #1 factor for OCR accuracy.
+      // We prioritize resolution over frame rate.
       const constraints: MediaStreamConstraints = {
         video: { 
             facingMode: 'environment',
-            width: { ideal: 1920 }, 
-            height: { ideal: 1080 },
-            frameRate: { ideal: 30 }
+            width: { ideal: 3840 }, 
+            height: { ideal: 2160 },
+            frameRate: { ideal: 30, max: 30 }
         },
         audio: false
       };
@@ -77,66 +80,56 @@ export const useCamera = () => {
         videoRef.current.play().catch(e => console.warn("Video play interrupted:", e));
       }
 
-      // --- SMART EXPOSURE & FOCUS OPTIMIZATION FOR OCR ---
+      // --- ADVANCED ISP TUNING FOR TEXT ---
       try {
         const track = stream.getVideoTracks()[0];
-        // Cast to 'any' because TypeScript DOM lib often lacks advanced ImageCapture capabilities
         const capabilities = (track.getCapabilities ? track.getCapabilities() : {}) as any;
         const advancedConstraints: any = [];
 
-        // A. Focus Priority: Sharpness is more important than brightness for OCR
+        // A. Focus: Sharpness is critical.
         if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
            advancedConstraints.push({ focusMode: 'continuous' });
         }
 
-        // B. Exposure Optimization:
-        // We use 'continuous' auto-exposure to let the hardware balance the light.
-        // However, we apply a positive Exposure Compensation to favor brighter images (better for paper/text),
-        // but strictly capped to avoid washing out text or introducing ISO noise.
+        // B. Exposure: We want "balanced" to "slightly bright" for paper documents.
+        // We use continuous auto-exposure but bias it slightly up.
         if (capabilities.exposureMode && capabilities.exposureMode.includes('continuous')) {
            advancedConstraints.push({ exposureMode: 'continuous' });
         }
 
-        // C. Exposure Compensation (The Smart Adjustment):
-        // If supported, slightly bump exposure (+0.5 EV is usually the sweet spot for text).
-        // This avoids the "Dark Feed" issue without causing noise like high ISO would.
+        // C. Exposure Compensation: +0.33 to +0.5 EV
+        // Just enough to brighten paper background without washing out black text.
+        // Avoid going too high to prevent ISO noise.
         if (capabilities.exposureCompensation) {
             const min = capabilities.exposureCompensation.min;
             const max = capabilities.exposureCompensation.max;
             const step = capabilities.exposureCompensation.step;
             
-            // Target: +0.66 EV (Good for text clarity, keeps noise low)
-            // Clamp value between device min/max
-            let targetEV = 0.66;
+            let targetEV = 0.5; // Slight boost for text readability
             if (targetEV > max) targetEV = max;
             if (targetEV < min) targetEV = min;
-            
-            // Ensure step alignment if required
             if (step > 0) {
                 targetEV = Math.round((targetEV - min) / step) * step + min;
             }
-
             advancedConstraints.push({ exposureCompensation: targetEV });
         }
 
-        // D. White Balance: Accurate white balance helps OCR engines distinguish text from background
+        // D. White Balance: Accurate white balance keeps paper looking white, not yellow/blue.
         if (capabilities.whiteBalanceMode && capabilities.whiteBalanceMode.includes('continuous')) {
             advancedConstraints.push({ whiteBalanceMode: 'continuous' });
         }
 
-        // D. Torch/Flash Capability Check
+        // Torch Check
         if (capabilities.torch) setHasTorch(true);
 
-        // Apply Constraints Batch
+        // Apply Tuning
         if (advancedConstraints.length > 0) {
             await track.applyConstraints({ advanced: advancedConstraints });
-            console.log("Applied Smart OCR Camera Constraints:", advancedConstraints);
         }
 
       } catch (e) {
-        console.warn("Capabilities optimization failed (non-critical)", e);
+        console.warn("ISP optimization failed", e);
       }
-      // ---------------------------------------------------
 
     } catch (err: any) {
       console.error("Camera start failed:", err);
@@ -148,7 +141,7 @@ export const useCamera = () => {
   const openNativeCamera = async (onCapture: (imageSrc: string) => void) => {
     try {
       const image = await Camera.getPhoto({
-        quality: 90, 
+        quality: 100, // Max quality for OCR
         allowEditing: false,
         resultType: CameraResultType.Uri, 
         source: CameraSource.Camera,
@@ -188,53 +181,80 @@ export const useCamera = () => {
     }
   }, [hasTorch, isTorchOn]);
 
-  const captureImage = useCallback((onCapture: (imageSrc: string) => void, shouldClose: boolean = true) => {
+  const captureImage = useCallback(async (onCapture: (imageSrc: string) => void, shouldClose: boolean = true) => {
     if (isCapturing) return;
     
-    // Multi-shot Cooldown (300ms)
+    // Rate Limiting
     const now = Date.now();
-    if (!shouldClose && now - lastCaptureTime.current < 300) return;
+    if (!shouldClose && now - lastCaptureTime.current < 500) return;
 
-    if (videoRef.current && videoRef.current.readyState >= videoRef.current.HAVE_CURRENT_DATA) {
+    if (videoRef.current && streamRef.current) {
       setIsCapturing(true);
       lastCaptureTime.current = now;
+      if (navigator.vibrate) navigator.vibrate(20);
 
-      if (navigator.vibrate) navigator.vibrate(15);
+      try {
+        const track = streamRef.current.getVideoTracks()[0];
+        let imageBlob: Blob | null = null;
 
-      const video = videoRef.current;
-      
-      // Delay (150ms) to allow focus/exposure to stabilize before capture
-      setTimeout(() => {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        const context = canvas.getContext('2d');
-        if (context) {
-          // Post-Processing for OCR:
-          // 1. Slight Contrast Boost (1.15): Separates text from background.
-          // 2. Minimal Brightness Boost (1.05): Ensures text isn't too dark, but avoids washing out.
-          // We avoid high ISO/Brightness in camera settings to prevent noise, and apply clean adjustments here.
-          context.filter = 'contrast(1.15) brightness(1.05)';
-          
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          
-          // High Quality JPEG for analysis
-          const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95); 
-          
-          if (navigator.vibrate) navigator.vibrate(25);
-          
-          onCapture(imageDataUrl);
-          
-          if (!shouldClose) {
-            setTimeout(() => {
-               if (mountedRef.current) setIsCapturing(false);
-            }, 300);
-          }
-        } else {
-          setIsCapturing(false);
+        // --- METHOD 1: Native ImageCapture (The "Pro" Way) ---
+        // Attempts to use the hardware ISP to take a real photo (HDR, Denoise, Sharpening).
+        // This produces significantly better text clarity than grabbing a video frame.
+        if ('ImageCapture' in window) {
+            try {
+                const imageCapture = new (window as any).ImageCapture(track);
+                // takePhoto() triggers the still-image pipeline (higher res, better processing)
+                imageBlob = await imageCapture.takePhoto();
+                console.log("Captured via ImageCapture API (High Quality)");
+            } catch (err) {
+                console.warn("ImageCapture API failed, falling back to Canvas", err);
+            }
         }
-      }, 150); 
+
+        // --- METHOD 2: Canvas Fallback (The "Fast" Way) ---
+        // Used if ImageCapture is not supported or fails.
+        // Optimized specifically for OCR: Grayscale + High Contrast.
+        if (!imageBlob) {
+            const video = videoRef.current;
+            const canvas = document.createElement('canvas');
+            // Use intrinsic video size (likely 4K if negotiation succeeded)
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const context = canvas.getContext('2d');
+            if (context) {
+                // OCR PRE-PROCESSING FILTERS:
+                // 1. Grayscale (100%): Removes color noise (chroma noise) which confuses OCR.
+                // 2. Contrast (140%): Makes black text darker and white paper brighter.
+                // 3. Brightness (105%): Compensates for contrast darkening.
+                // 4. Sharpening: (Simulated via high resolution + contrast)
+                context.filter = 'grayscale(100%) contrast(140%) brightness(105%)';
+                
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Max quality JPEG
+                const base64 = canvas.toDataURL('image/jpeg', 0.95);
+                onCapture(base64);
+            }
+        } else {
+            // Process the High-Quality Blob from Method 1
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                onCapture(reader.result as string);
+            };
+            reader.readAsDataURL(imageBlob);
+        }
+
+        if (navigator.vibrate) navigator.vibrate(40);
+
+        if (!shouldClose) {
+            setTimeout(() => { if (mountedRef.current) setIsCapturing(false); }, 500);
+        }
+
+      } catch (e) {
+        console.error("Capture failed completely", e);
+        setIsCapturing(false);
+      }
     }
   }, [isCapturing]);
 
