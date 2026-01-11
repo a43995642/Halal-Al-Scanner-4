@@ -33,9 +33,11 @@ const vibrate = (pattern: number | number[] = 10) => {
   }
 };
 
-// Utility to optimize images for OCR (Sharpen, Contrast, High Res)
-// REPLACED: compressImage -> optimizeImageForOCR
-const optimizeImageForOCR = (base64Str: string, maxWidth = 2000, quality = 0.9): Promise<string> => {
+// --- DUAL PIPELINE PROCESSING ---
+
+// 1. AI PIPELINE (Aggressive OCR Optimization)
+// This generates the "ugly" but machine-readable version.
+const createAIOptimizedImage = (base64Str: string, maxWidth = 2000, quality = 0.85): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = base64Str;
@@ -44,8 +46,7 @@ const optimizeImageForOCR = (base64Str: string, maxWidth = 2000, quality = 0.9):
       let width = img.width;
       let height = img.height;
       
-      // OCR requires high resolution. Do NOT downscale aggressively.
-      // 2000px width is a good balance for ingredients lists.
+      // High Res for AI (Keep it as large as reasonable)
       if (width > maxWidth) {
         height = Math.round((height * maxWidth) / width);
         width = maxWidth;
@@ -55,20 +56,16 @@ const optimizeImageForOCR = (base64Str: string, maxWidth = 2000, quality = 0.9):
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // --- OCR PRE-PROCESSING PIPELINE ---
+        // --- THE AI "MAGIC SAUCE" FILTER ---
+        // 1. grayscale(100%): Removes color noise (chromatic aberration) which confuses OCR.
+        // 2. contrast(1.5): Aggressively pulls text from background (makes darks darker, lights lighter).
+        // 3. brightness(1.1): Compensates for the darkening effect of high contrast.
+        // 4. saturate(0): Redundant with grayscale, but ensures no color artifacts.
+        ctx.filter = 'grayscale(100%) contrast(1.5) brightness(1.1)';
         
-        // 1. Contrast & Brightness Enhancement
-        // Boosting contrast helps separate text from background.
-        // Slight brightness boost helps in low light.
-        // Note: 'contrast(1.2)' increases contrast by 20%.
-        ctx.filter = 'contrast(1.15) brightness(1.05)';
-        
-        // 2. Draw Image
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Note: Real "sharpening" via convolution matrix is too slow for JS main thread.
-        // The contrast boost combined with high resolution is usually sufficient for Gemini.
-        
+        // Return High Quality JPEG for the AI
         resolve(canvas.toDataURL('image/jpeg', quality));
       } else {
         resolve(base64Str);
@@ -77,6 +74,15 @@ const optimizeImageForOCR = (base64Str: string, maxWidth = 2000, quality = 0.9):
     img.onerror = () => resolve(base64Str);
   });
 };
+
+// 2. USER PIPELINE (Aesthetic Optimization - Optional)
+// This ensures the thumbnails looking nice. Currently, passing through RAW is best for speed.
+const optimizeImageForDisplay = (base64Str: string): Promise<string> => {
+   // We can add slight compression here for memory management if needed, 
+   // but for now, we return raw to keep it snappy.
+   return Promise.resolve(base64Str);
+};
+
 
 // Helper for ingredients style
 const getIngredientStyle = (status: HalalStatus, isOverlay: boolean = false) => {
@@ -139,6 +145,7 @@ const ImagePreviewModal = ({ images, onDelete, onClose }: { images: string[], on
        >
           {images.map((img, idx) => (
              <div key={idx} className="w-full h-full flex-shrink-0 snap-center relative flex items-center justify-center bg-black">
+                {/* Displaying User Version (Pretty) */}
                 <img src={img} alt={`Captured ${idx}`} className="max-w-full max-h-full object-contain p-2" />
              </div>
           ))}
@@ -470,17 +477,17 @@ function App() {
     setIsLoading(true); setError(null); setAnalyzedTextContent(null); setProgress(5); setCurrentPreviewIndex(0);
     const controller = new AbortController(); abortControllerRef.current = controller;
     try {
-      // 1. OCR Optimization: Use 2000px width and 0.9 quality
-      // We pass the new OCR optimization function
+      // 1. AI PRE-PROCESSING PIPELINE
+      // Create separate high-contrast versions for the OCR
       const width = useLowQuality ? 1024 : 2000;
-      const quality = useLowQuality ? 0.7 : 0.9;
+      const quality = useLowQuality ? 0.7 : 0.85;
       
-      const compressedImages = await Promise.all(images.map(img => optimizeImageForOCR(img, width, quality)));
+      const aiReadyImages = await Promise.all(images.map(img => createAIOptimizedImage(img, width, quality)));
       
       setProgress(40); progressInterval.current = setInterval(() => { setProgress(prev => (prev >= 90 ? 90 : prev + 2)); }, 200);
       
-      // Analyze with optimized images
-      const scanResult = await analyzeImage(compressedImages, userId || undefined, true, true, language, controller.signal);
+      // Analyze the AI-optimized images
+      const scanResult = await analyzeImage(aiReadyImages, userId || undefined, true, true, language, controller.signal);
       
       clearInterval(progressInterval.current as any); setProgress(100);
       
@@ -491,10 +498,19 @@ function App() {
           setResult(scanResult); 
           if (userId) await fetchUserStats(userId); 
           
-          // Save small thumbnail for history
-          optimizeImageForOCR(compressedImages[0], 300, 0.6)
-            .then(thumb => saveToHistory(scanResult, thumb))
-            .catch(() => saveToHistory(scanResult)); 
+          // Save small thumbnail for history (use the nice User version for thumb)
+          optimizeImageForDisplay(images[0]).then(img => {
+              // Create a tiny thumb
+               const imgObj = new Image();
+               imgObj.src = img;
+               imgObj.onload = () => {
+                   const c = document.createElement('canvas');
+                   c.width = 300;
+                   c.height = (imgObj.height * 300) / imgObj.width;
+                   c.getContext('2d')?.drawImage(imgObj, 0, 0, 300, c.height);
+                   saveToHistory(scanResult, c.toDataURL('image/jpeg', 0.6));
+               };
+          }).catch(() => saveToHistory(scanResult)); 
       }
     } catch (err: any) { if (err.name === 'AbortError') return; setError(t.unexpectedError); } finally { setIsLoading(false); abortControllerRef.current = null; }
   };

@@ -52,18 +52,16 @@ export const useCamera = () => {
     }
 
     try {
-      // 1. OCR-First Constraints (High Resolution & Sharpness Priority)
-      // Request 4K resolution (3840x2160) or highest available.
-      // High resolution is the #1 factor for OCR accuracy.
-      // We prioritize resolution over frame rate significantly.
+      // 1. BASE SOURCE: High Resolution, Balanced Framerate
+      // We capture 4K to serve both the AI (needs pixels) and User (needs clarity).
       const constraints: MediaStreamConstraints = {
         video: { 
             facingMode: 'environment',
-            // Try to get max resolution for OCR
+            // Prefer 4K, fallback gracefully
             width: { ideal: 3840 }, 
             height: { ideal: 2160 },
-            // Lower framerate is acceptable for better exposure per frame
-            frameRate: { ideal: 24, max: 30 } 
+            // Standard framerate for smooth preview
+            frameRate: { ideal: 30, max: 30 } 
         },
         audio: false
       };
@@ -82,53 +80,37 @@ export const useCamera = () => {
         videoRef.current.play().catch(e => console.warn("Video play interrupted:", e));
       }
 
-      // --- OCR ISP TUNING ---
-      // Apply advanced constraints to optimize specifically for TEXT READABILITY
+      // --- ISP BALANCED TUNING ---
+      // Goal: Create a "Master Negative" that is good for display AND processing.
       try {
         const track = stream.getVideoTracks()[0];
         const capabilities = (track.getCapabilities ? track.getCapabilities() : {}) as any;
         const advancedConstraints: any = [];
 
-        // A. Focus: Force Continuous (Sharpness Priority)
-        // Essential for macro shots of ingredients
+        // A. Focus: Continuous is non-negotiable for macro text shots.
         if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
            advancedConstraints.push({ focusMode: 'continuous' });
         }
 
-        // B. Exposure: Continuous Auto Exposure
+        // B. Exposure: Continuous Auto
         if (capabilities.exposureMode && capabilities.exposureMode.includes('continuous')) {
            advancedConstraints.push({ exposureMode: 'continuous' });
         }
 
-        // C. Exposure Compensation: POSITIVE BIAS (+0.5 EV)
-        // For OCR, slightly brighter is better than dark. We want to eliminate shadows on text.
-        // We target +0.5 EV to brighten the image without washing out details.
+        // C. Exposure Compensation: SLIGHT BIAS ONLY (+0.0 to +0.3 EV)
+        // Previously we used +0.5EV which is great for OCR but washes out the UI preview.
+        // We set it to neutral or very slightly bright. The AI pipeline will boost brightness digitally later.
         if (capabilities.exposureCompensation) {
-            const min = capabilities.exposureCompensation.min;
-            const max = capabilities.exposureCompensation.max;
-            const step = capabilities.exposureCompensation.step;
-            
-            // Target +0.5 EV (or close to it)
-            let targetEV = 0.5; 
-            
-            // Clamp to device limits
-            if (targetEV > max) targetEV = max;
-            if (targetEV < min) targetEV = min;
-            
-            // Align to step
-            if (step > 0) {
-                targetEV = Math.round((targetEV - min) / step) * step + min;
-            }
+            // Target +0.0 EV (Neutral) or slightly positive if scene is dark
+            // We rely on post-processing for the heavy lifting now.
+            const targetEV = 0; 
             advancedConstraints.push({ exposureCompensation: targetEV });
         }
 
-        // D. White Balance: Continuous (Neutral colors help OCR)
+        // D. White Balance: Continuous (Natural colors for user)
         if (capabilities.whiteBalanceMode && capabilities.whiteBalanceMode.includes('continuous')) {
             advancedConstraints.push({ whiteBalanceMode: 'continuous' });
         }
-
-        // E. Zoom: If supported, slight optical zoom can help avoid shadow from phone
-        // Resetting to 1.0 ensures full FOV, user can move closer.
 
         // Torch Check
         if (capabilities.torch) setHasTorch(true);
@@ -152,8 +134,8 @@ export const useCamera = () => {
   const openNativeCamera = async (onCapture: (imageSrc: string) => void) => {
     try {
       const image = await Camera.getPhoto({
-        quality: 100, // Max quality for OCR
-        allowEditing: false, // Do not let user crop/filter, we want raw high res
+        quality: 100,
+        allowEditing: false,
         resultType: CameraResultType.Uri, 
         source: CameraSource.Camera,
         correctOrientation: true, 
@@ -208,41 +190,31 @@ export const useCamera = () => {
         const track = streamRef.current.getVideoTracks()[0];
         let imageBlob: Blob | null = null;
 
-        // --- METHOD 1: Native ImageCapture (High Res) ---
-        // Prioritize taking a real photo using the hardware ISP for max resolution
+        // --- METHOD 1: Native ImageCapture (RAW-like High Res) ---
         if ('ImageCapture' in window) {
             try {
                 const imageCapture = new (window as any).ImageCapture(track);
                 imageBlob = await imageCapture.takePhoto();
-                console.log("Captured via ImageCapture API (High Resolution OCR)");
             } catch (err) {
                 console.warn("ImageCapture API failed, falling back to Canvas", err);
             }
         }
 
-        // --- METHOD 2: Canvas Fallback (Fast) ---
+        // --- METHOD 2: Canvas Fallback ---
         if (!imageBlob) {
             const video = videoRef.current;
             const canvas = document.createElement('canvas');
-            // Use intrinsic video size (4K if negotiation succeeded)
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            
             const context = canvas.getContext('2d');
             if (context) {
-                // NATURAL PROCESSING FOR OCR:
-                // No blur filters. We want raw sharpness.
+                // Draw RAW (No filters applied here, we want clean source)
                 context.filter = 'none';
-                context.imageSmoothingEnabled = false; // Preserve sharp edges
-                
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Max quality JPEG (0.95) to prevent compression artifacts on text
                 const base64 = canvas.toDataURL('image/jpeg', 0.95);
                 onCapture(base64);
             }
         } else {
-            // Process the High-Quality Blob from Method 1
             const reader = new FileReader();
             reader.onloadend = () => {
                 onCapture(reader.result as string);
@@ -251,7 +223,6 @@ export const useCamera = () => {
         }
 
         if (navigator.vibrate) navigator.vibrate(40);
-
         if (!shouldClose) {
             setTimeout(() => { if (mountedRef.current) setIsCapturing(false); }, 500);
         }
