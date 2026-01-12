@@ -2,6 +2,8 @@
   "name": "Halal-Al-Scanner-4",
   "description": "IMPORTANT:\nThis project is a PURE React + TypeScript application built with Vite and Capacitor for Android.\nPython and Streamlit are NOT used and MUST NOT be generated.\nAny Python files (app.py, requirements.txt, etc.) are invalid for this project.\nAll code must be written in TypeScript/JavaScript only.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "microphone",
+    "geolocation"
   ]
 }
