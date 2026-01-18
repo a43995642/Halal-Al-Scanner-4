@@ -19,10 +19,14 @@
     "fix-gradle": "node scripts/fix-gradle-wrapper.js",
     "force-java": "node scripts/force-java-compatibility.js",
     "ensure-vars": "node scripts/ensure-variables-gradle.js",
-    "build-apk": "npm run get-sha1 && npm run build && npm run clean-native && npm run setup-android && npx cap sync && npm run ensure-vars && npm run set-icon && node update-manifest.js && node scripts/smart-build.js",
+    "get-sha1": "node scripts/get-sha1.js",
     "create-release-key": "node scripts/create-release-key.js",
-    "build-aab": "npm run create-release-key && npm run build && npm run clean-native && npm run setup-android && npx cap sync && npm run ensure-vars && npm run set-icon && node update-manifest.js && cd android && chmod +x gradlew && ./gradlew clean bundleRelease",
-    "get-sha1": "node scripts/get-sha1.js"
+    
+    "build-apk": "npm run get-sha1 && npm run build && npm run clean-native && npm run setup-android && npx cap sync && npm run ensure-vars && npm run set-icon && node update-manifest.js && node scripts/smart-build.js debug",
+    
+    "build-release-apk": "npm run create-release-key && npm run build && npm run clean-native && npm run setup-android && npx cap sync && npm run ensure-vars && npm run set-icon && node update-manifest.js && node scripts/smart-build.js release",
+    
+    "build-aab": "npm run create-release-key && npm run build && npm run clean-native && npm run setup-android && npx cap sync && npm run ensure-vars && npm run set-icon && node update-manifest.js && node scripts/smart-build.js bundle"
   },
   "engines": {
     "node": ">=18.x"

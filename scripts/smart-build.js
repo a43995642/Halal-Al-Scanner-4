@@ -3,7 +3,10 @@ import { spawn, execSync } from 'child_process';
 import { readdirSync, existsSync, chmodSync } from 'fs';
 import { join, resolve } from 'path';
 
-console.log('\n🚀 Starting Smart Android Build...\n');
+// Get Build Mode from arguments
+const mode = process.argv[2] || 'debug'; // 'debug', 'release', or 'bundle'
+
+console.log(`\n🚀 Starting Smart Android Build [Mode: ${mode.toUpperCase()}]...\n`);
 
 // 1. Find compatible Java (Priority: 17 > 21 > 11)
 const jvmBaseDir = '/usr/lib/jvm';
@@ -52,8 +55,6 @@ const wrapperPath = join(androidDir, isWin ? 'gradlew.bat' : 'gradlew');
 if (!existsSync(wrapperPath)) {
     console.warn(`⚠️ Gradle Wrapper missing. Generating one (v8.4)...`);
     try {
-        // We use system gradle to generate the wrapper with a specific version
-        // Gradle 8.4 is stable and compatible with AGP 8.2
         execSync(`gradle wrapper --gradle-version 8.4`, { 
             cwd: androidDir, 
             env: env,
@@ -72,7 +73,23 @@ if (!existsSync(wrapperPath)) {
     try { chmodSync(wrapperPath, '755'); } catch (e) {}
 }
 
-const args = ['clean', 'assembleDebug', '--stacktrace'];
+// 4. Determine Gradle Task based on Mode
+let args = [];
+let outputMsg = '';
+
+if (mode === 'bundle') {
+    args = ['clean', 'bundleRelease'];
+    outputMsg = '👉 check android/app/build/outputs/bundle/release/app-release.aab';
+} else if (mode === 'release') {
+    args = ['clean', 'assembleRelease'];
+    outputMsg = '👉 check android/app/build/outputs/apk/release/app-release.apk';
+} else {
+    // Debug (Default)
+    args = ['clean', 'assembleDebug'];
+    outputMsg = '👉 check android/app/build/outputs/apk/debug/app-debug.apk';
+}
+
+args.push('--stacktrace');
 
 console.log(`🔨 Executing Gradle in: ${androidDir}`);
 console.log(`👉 Command: ${gradleCmd} ${args.join(' ')}`);
@@ -85,8 +102,8 @@ const buildProcess = spawn(gradleCmd, args, {
 
 buildProcess.on('close', (code) => {
     if (code === 0) {
-        console.log('\n🎉 APK Build Successful!');
-        console.log('👉 check android/app/build/outputs/apk/debug/app-debug.apk');
+        console.log(`\n🎉 ${mode.toUpperCase()} Build Successful!`);
+        console.log(outputMsg);
     } else {
         console.error(`\n❌ Build Failed with code ${code}. See logs above.`);
         process.exit(code);
