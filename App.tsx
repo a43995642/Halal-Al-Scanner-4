@@ -385,9 +385,9 @@ function App() {
          {!isLoading && result && (
             <div className="w-full max-w-sm pointer-events-auto animate-fade-in flex flex-col gap-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
                 <StatusBadge status={result.status} />
-                <div className="bg-[#1e1e1e]/90 backdrop-blur-md p-4 rounded-xl border border-white/10 shadow-xl">
+                <div className="bg-black/90 backdrop-blur-md p-5 rounded-2xl border border-white/20 shadow-2xl">
                     <h3 className="text-white font-bold mb-2 flex items-center gap-2 text-lg">{t.resultTitle} {result.confidence && <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-300">{result.confidence}%</span>}</h3>
-                    <p className="text-gray-300 text-sm leading-relaxed">{result.reason}</p>
+                    <p className="text-white text-base leading-relaxed font-medium">{result.reason}</p>
                 </div>
                 <div className="flex justify-center">
                    <button onClick={() => setShowCorrectionModal(true)} className="text-gray-400 text-xs flex items-center gap-1.5 hover:text-white transition bg-black/40 px-3 py-1.5 rounded-full border border-white/5">

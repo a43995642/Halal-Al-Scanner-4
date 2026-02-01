@@ -6,11 +6,12 @@ export const getIngredientStyle = (status: HalalStatus, isOverlay: boolean = fal
   if (isOverlay) {
     switch(status) {
       case HalalStatus.HARAM: 
-        return "bg-red-700/95 border-red-600 text-white font-bold ring-2 ring-red-500/50 shadow-red-900/50";
+        return "bg-red-900 border-red-500 text-white font-bold ring-2 ring-red-500/50 shadow-lg";
       case HalalStatus.DOUBTFUL: 
-        return "bg-amber-500/90 border-amber-400 text-white font-bold ring-2 ring-amber-500/50";
+        return "bg-amber-900 border-amber-500 text-white font-bold ring-2 ring-amber-500/50 shadow-lg";
       default: 
-        return "bg-white/20 border-white/20 text-white backdrop-blur-md";
+        // High contrast black background for safe/detected ingredients
+        return "bg-black border-white/30 text-white font-bold shadow-lg ring-1 ring-white/10";
     }
   } else {
     switch(status) {
