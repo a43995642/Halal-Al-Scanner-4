@@ -385,7 +385,8 @@ function App() {
          {!isLoading && result && (
             <div className="w-full max-w-sm pointer-events-auto animate-fade-in flex flex-col gap-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
                 <StatusBadge status={result.status} />
-                <div className="bg-black/90 backdrop-blur-md p-5 rounded-2xl border border-white/20 shadow-2xl">
+                {/* BLACK BACKGROUND HERE */}
+                <div className="bg-black backdrop-blur-md p-5 rounded-2xl border-2 border-white/30 shadow-2xl">
                     <h3 className="text-white font-bold mb-2 flex items-center gap-2 text-lg">{t.resultTitle} {result.confidence && <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-300">{result.confidence}%</span>}</h3>
                     <p className="text-white text-base leading-relaxed font-medium">{result.reason}</p>
                 </div>
@@ -395,7 +396,7 @@ function App() {
                       {t.reportError}
                    </button>
                 </div>
-                {result.ingredientsDetected.length > 0 && <div className="flex flex-wrap gap-2 justify-center">{result.ingredientsDetected.map((ing, idx) => (<span key={idx} className={`text-xs px-2 py-1 rounded border ${getIngredientStyle(ing.status, true)}`}>{ing.name}</span>))}</div>}
+                {result.ingredientsDetected.length > 0 && <div className="flex flex-wrap gap-2 justify-center">{result.ingredientsDetected.map((ing, idx) => (<span key={idx} className={`text-xs rounded border ${getIngredientStyle(ing.status, true)}`}>{ing.name}</span>))}</div>}
             </div>
          )}
          {!isLoading && error && (

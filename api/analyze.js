@@ -5,19 +5,21 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from '@supabase/supabase-js';
 
-// Configuration
-const PROJECT_URL = 'https://lrnvtsnacrmnnsitdubz.supabase.co';
-// Add fallback key to ensure backend doesn't crash if Vercel env vars are missing
-const FALLBACK_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxybnZ0c25hY3Jtbm5zaXRkdWJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwODYyMTgsImV4cCI6MjA4MDY2MjIxOH0.BUdC_qXw5iPDnObA5SGAHgOfydzxSP2xro618o6wn0g';
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL || PROJECT_URL;
-
+// Configuration from Environment Variables
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
 // Use SERVICE_ROLE_KEY for admin privileges (bypasses RLS to write scan counts safely)
-// If missing, use VITE_ANON_KEY from env, otherwise use hardcoded fallback
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || FALLBACK_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 // Initialize Supabase Admin Client
-const supabase = createClient(supabaseUrl, supabaseKey);
+// We use a try-catch or safe init to prevent crash on module load if keys are missing
+let supabase;
+try {
+    if (supabaseUrl && supabaseKey) {
+        supabase = createClient(supabaseUrl, supabaseKey);
+    }
+} catch (e) {
+    console.error("Failed to init Supabase client:", e);
+}
 
 export default async function handler(request, response) {
   // 1. permissive CORS
@@ -48,11 +50,12 @@ export default async function handler(request, response) {
       console.error("Server missing API Key");
       return response.status(500).json({ 
         error: 'CONFIGURATION_ERROR', 
-        message: 'Missing API Key in environment.' 
+        message: 'Missing Google API Key in environment.' 
       });
     }
 
-    if (userId && userId !== 'anonymous') {
+    // Check User Stats if Supabase is configured
+    if (userId && userId !== 'anonymous' && supabase) {
         try {
             const { data: userStats, error: dbError } = await supabase
               .from('user_stats')
@@ -174,7 +177,8 @@ export default async function handler(request, response) {
         result = { status: "DOUBTFUL", reason: "Analysis parse error.", ingredientsDetected: [], confidence: 0 };
     }
 
-    if (userId && userId !== 'anonymous') {
+    // Increment scan count if user is logged in and Supabase is active
+    if (userId && userId !== 'anonymous' && supabase) {
        try {
            await supabase.rpc('increment_scan_count', { row_id: userId });
        } catch (statsErr) {

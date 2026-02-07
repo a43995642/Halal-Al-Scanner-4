@@ -2,11 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Configuration
-const PROJECT_URL = 'https://lrnvtsnacrmnnsitdubz.supabase.co';
-const FALLBACK_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxybnZ0c25hY3Jtbm5zaXRkdWJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwODYyMTgsImV4cCI6MjA4MDY2MjIxOH0.BUdC_qXw5iPDnObA5SGAHgOfydzxSP2xro618o6wn0g';
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL || PROJECT_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || FALLBACK_ANON_KEY;
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 export default async function handler(request, response) {
   // 1. Dynamic CORS
@@ -39,7 +36,7 @@ export default async function handler(request, response) {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  if (!supabaseServiceKey) {
+  if (!supabaseUrl || !supabaseServiceKey) {
     return response.status(500).json({ error: 'Server Misconfiguration: Missing Service Key' });
   }
 

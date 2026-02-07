@@ -2,8 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Configuration
-const PROJECT_URL = 'https://lrnvtsnacrmnnsitdubz.supabase.co';
-const supabaseUrl = process.env.VITE_SUPABASE_URL || PROJECT_URL;
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
 // MUST use Service Role Key to have permission to delete users/data and read emails
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY; 
 
@@ -23,6 +22,10 @@ export default async function handler(request, response) {
 
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+      return response.status(500).json({ error: 'Server DB Configuration Missing' });
   }
 
   try {
