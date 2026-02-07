@@ -22,6 +22,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const [showEmailSent, setShowEmailSent] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
+  // Helper to get the correct redirect URL
+  const getRedirectUrl = () => {
+      if (Capacitor.isNativePlatform()) {
+          return 'io.halalscanner.ai://login-callback';
+      }
+      // In development or web
+      return window.location.origin;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -52,14 +61,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         onClose();
       } else {
         // --- SIGN UP FLOW ---
-        
-        // تحديد رابط التوجيه بناءً على المنصة
-        // إذا كان تطبيق موبايل -> استخدم الرابط الداخلي
-        // إذا كان متصفح -> استخدم رابط الموقع الحالي
-        const redirectUrl = Capacitor.isNativePlatform() 
-             ? 'io.halalscanner.ai://login-callback' 
-             : window.location.origin;
-
+        const redirectUrl = getRedirectUrl();
         console.log('Signing up with redirect to:', redirectUrl);
 
         const { data, error: signUpError } = await supabase.auth.signUp({
@@ -72,19 +74,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         
         if (signUpError) throw signUpError;
 
-        // التحقق مما إذا تم إنشاء الجلسة فوراً (في حال كان تأكيد الإيميل معطلاً في Supabase)
+        // التحقق مما إذا تم إنشاء الجلسة فوراً
         if (data.session) {
              onSuccess();
              onClose();
         } else {
              // تم إنشاء الحساب ولكن يتطلب تفعيل الإيميل
-             // نظهر شاشة جميلة بدلاً من alert
              setShowEmailSent(true);
         }
       }
     } catch (err: any) {
       console.error("Auth Error:", err);
-      // تحسين رسائل الخطأ الشائعة
       let msg = err.message;
       if (msg.includes('User already registered')) msg = language === 'ar' ? 'هذا البريد مسجل مسبقاً، حاول تسجيل الدخول.' : 'User already registered. Please sign in.';
       else if (msg.includes('Invalid login credentials')) msg = language === 'ar' ? 'بيانات الدخول غير صحيحة.' : 'Invalid email or password.';
@@ -99,34 +99,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
     setError(null);
     try {
       if (Capacitor.isNativePlatform()) {
-        const googleUser = await GoogleAuth.signIn();
-        const idToken = googleUser.authentication.idToken;
+        // 1. Try Native Google Auth First (Requires SHA-1 configured)
+        try {
+            const googleUser = await GoogleAuth.signIn();
+            const idToken = googleUser.authentication.idToken;
 
-        if (!idToken) throw new Error('No ID Token returned from Google.');
+            if (!idToken) throw new Error('No ID Token returned from Google.');
 
-        const { error } = await supabase.auth.signInWithIdToken({
-          provider: 'google',
-          token: idToken,
-        });
+            const { error } = await supabase.auth.signInWithIdToken({
+              provider: 'google',
+              token: idToken,
+            });
 
-        if (error) throw error;
-        onSuccess();
-        onClose();
-      } else {
-        const redirectUrl = Capacitor.isNativePlatform() 
-             ? 'io.halalscanner.ai://login-callback' 
-             : window.location.origin;
-
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-             redirectTo: redirectUrl,
-             queryParams: { access_type: 'offline', prompt: 'consent' }
-          }
-        });
-        
-        if (error) throw error;
+            if (error) throw error;
+            onSuccess();
+            onClose();
+            return; // Success, exit function
+        } catch (nativeErr) {
+            console.warn("Native Google Auth failed, falling back to Web OAuth:", nativeErr);
+            // If Native fails (e.g. SHA-1 mismatch), fall through to Web OAuth below
+        }
       }
+
+      // 2. Web OAuth Fallback (Opens Browser)
+      const redirectUrl = getRedirectUrl();
+      console.log("Starting OAuth with redirect:", redirectUrl);
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+           redirectTo: redirectUrl,
+           queryParams: { access_type: 'offline', prompt: 'consent' }
+        }
+      });
+      
+      if (error) throw error;
+      
     } catch (err: any) {
       console.error("Google Auth Error:", err);
       let msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
@@ -138,9 +146,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const handleResendEmail = async () => {
     setIsResending(true);
     try {
-        const redirectUrl = Capacitor.isNativePlatform() 
-             ? 'io.halalscanner.ai://login-callback' 
-             : window.location.origin;
+        const redirectUrl = getRedirectUrl();
 
         const { error } = await supabase.auth.resend({
             type: 'signup',
@@ -162,13 +168,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   };
 
   // --- Success View (Check Email UI) ---
-  // هذه الواجهة تظهر فقط بعد التسجيل الناجح
   if (showEmailSent) {
     return (
         <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" dir={dir}>
           <div className="bg-[#1e1e1e] rounded-3xl w-full max-w-sm shadow-2xl border border-white/10 animate-slide-up p-8 text-center relative overflow-hidden">
              
-             {/* زينة خلفية */}
              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-green-400"></div>
 
              <div className="w-20 h-20 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(16,185,129,0.2)] border border-emerald-500/20">
