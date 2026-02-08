@@ -1,6 +1,8 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Language, TranslationDictionary } from '../types';
+import ar from '../locales/ar';
+import en from '../locales/en';
 
 interface LanguageContextType {
   language: Language;
@@ -20,52 +22,24 @@ export const LanguageProvider = ({ children }: { children?: ReactNode }) => {
      return 'ar';
   });
   
-  const [t, setT] = useState<TranslationDictionary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // FIX: Use static dictionaries instead of dynamic imports to prevent WSOD on Android
+  const t = language === 'ar' ? ar : en;
+  const dir = language === 'ar' ? 'rtl' : 'ltr';
 
   useEffect(() => {
-    let isMounted = true;
-    const loadTranslations = async () => {
-      setIsLoading(true);
-      try {
-        // Dynamic import based on language
-        // Note: Vite will bundle these files as separate chunks
-        const module = await import(`../locales/${language}.ts`);
-        
-        if (isMounted) {
-          setT(module.default);
-          
-          // Update DOM attributes for global styling
-          document.documentElement.setAttribute('lang', language);
-          document.documentElement.setAttribute('dir', language === 'ar' ? 'rtl' : 'ltr');
-          localStorage.setItem('halalScannerLang', language);
-        }
-      } catch (error) {
-        console.error("Failed to load translations for", language, error);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-    
-    loadTranslations();
-    return () => { isMounted = false; };
-  }, [language]);
+      // Update DOM attributes for global styling
+      document.documentElement.setAttribute('lang', language);
+      document.documentElement.setAttribute('dir', dir);
+      localStorage.setItem('halalScannerLang', language);
+  }, [language, dir]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
   };
 
-  // Show a minimal loader while the language file is being fetched (usually milliseconds)
-  if (isLoading || !t) {
-    return (
-      <div className="fixed inset-0 bg-slate-50 dark:bg-slate-950 flex items-center justify-center z-[9999]">
-         <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
+  // No loading state needed with static imports
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, isLoading, dir: language === 'ar' ? 'rtl' : 'ltr' }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, isLoading: false, dir }}>
       {children}
     </LanguageContext.Provider>
   );
