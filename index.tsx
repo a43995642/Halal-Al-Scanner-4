@@ -1,5 +1,4 @@
-
-import React, { ReactNode, Component } from 'react';
+import React, { ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -13,10 +12,11 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// Fix: Use direct import of Component and class fields for state to resolve TypeScript property existence errors
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Explicitly declare state as a class field to satisfy TS property existence checks
-  public state: ErrorBoundaryState = { hasError: false, error: null };
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
@@ -27,7 +27,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   render() {
-    // Fix: Accessing this.state and this.props which are now properly recognized through inheritance
     if (this.state.hasError) {
       return (
         <div className="flex items-center justify-center min-h-screen bg-slate-950 p-6 text-center" dir="rtl">

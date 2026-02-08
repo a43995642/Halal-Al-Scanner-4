@@ -13,7 +13,6 @@ const copyRootAssets = () => {
   return {
     name: 'copy-root-assets',
     closeBundle: async () => {
-      // Added privacy.html and delete-account.html here to ensure they are copied exactly as is
       const filesToCopy = ['icon.png', 'manifest.json', 'service-worker.js', 'privacy.html', 'delete-account.html'];
       const distDir = path.resolve(__dirname, 'dist');
       
@@ -36,34 +35,28 @@ export default defineConfig(() => {
   return {
     plugins: [
       react(),
-      copyRootAssets() // Activate the copier plugin
+      copyRootAssets()
     ],
-    // This is critical for Android/Capacitor:
-    // It ensures assets are loaded from './' instead of '/'
+    // Ensure relative paths for Android WebView
     base: './',
     build: {
       outDir: 'dist',
       emptyOutDir: true,
-      sourcemap: false, // Disable sourcemaps for production to reduce bundle size
+      sourcemap: false,
       minify: 'esbuild',
+      // Ensure compatibility with older WebViews
+      target: 'es2020',
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
         },
         output: {
-          // Manual chunking to separate vendor libs from app code for better caching/loading
-          manualChunks(id) {
+          // Simplify chunking to avoid loading issues
+          manualChunks: (id) => {
             if (id.includes('node_modules')) {
-              if (id.includes('react') || id.includes('react-dom')) {
-                return 'vendor-react';
-              }
-              if (id.includes('@capacitor')) {
-                return 'vendor-capacitor';
-              }
-              if (id.includes('@google/genai') || id.includes('@supabase')) {
-                return 'vendor-cloud';
-              }
-              return 'vendor-others';
+              if (id.includes('react')) return 'vendor-react';
+              if (id.includes('@capacitor')) return 'vendor-capacitor';
+              return 'vendor-libs';
             }
           }
         }
@@ -71,7 +64,7 @@ export default defineConfig(() => {
     },
     server: {
       port: 3000,
-      host: true // Allow network access for testing on phone
+      host: true
     }
   };
 });
