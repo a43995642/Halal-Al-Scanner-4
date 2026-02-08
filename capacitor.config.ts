@@ -2,33 +2,28 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  // ⚠️ IMPORTANT: Unique ID for the Play Store
   appId: 'io.halalscanner.ai', 
   appName: 'Halal Scanner',
   webDir: 'dist',
   server: {
     androidScheme: 'https',
-    hostname: 'halal-al-scanner-4.vercel.app', // Critical for CORS
+    // Removed specific hostname to allow local loading from internal assets which is more stable
     cleartext: true,
     allowNavigation: [
       "*.vercel.app",
       "*.supabase.co",
-      "accounts.google.com"
+      "accounts.google.com",
+      "world.openfoodfacts.org"
     ]
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: "#1e1e1e",
+      backgroundColor: "#020617",
       androidSplashResourceName: "splash",
       androidScaleType: "CENTER_CROP", 
       showSpinner: false,
-    },
-    Keyboard: {
-      resize: "body",
-      style: "DARK",
-      resizeOnFullScreen: true,
     },
     GoogleAuth: {
       scopes: ["profile", "email"],
