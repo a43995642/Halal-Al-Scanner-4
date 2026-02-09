@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'halal-scanner-v4'; // Bumped version to v4
+const CACHE_NAME = 'halal-scanner-v5'; // Bumped version to v5 to force update
 const urlsToCache = [
   '/',
   '/index.html',
