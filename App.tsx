@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBadge } from './components/StatusBadge';
 import { SubscriptionModal } from './components/SubscriptionModal';
@@ -65,6 +64,9 @@ function App() {
   const [isPremium, setIsPremium] = useState(false);
   const [scanCount, setScanCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  
+  // New Loading State for Auth Initialization
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   
   const { language, t } = useLanguage();
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -146,35 +148,51 @@ function App() {
   };
 
   useEffect(() => {
+    // 1. Init Google Auth
     try { GoogleAuth.initialize({ clientId: WEB_CLIENT_ID, scopes: ['profile', 'email'], grantOfflineAccess: false }); } catch (e) {}
+    
+    // 2. Load Local Data
     const accepted = localStorage.getItem('halalScannerTermsAccepted');
     if (accepted !== 'true') setShowOnboarding(true);
     const savedHistory = localStorage.getItem('halalScannerHistory');
     if (savedHistory) { try { setHistory(JSON.parse(savedHistory)); } catch (e) {} }
     
-    // Auth logic - Fix for unused setUserId
+    // 3. Auth Logic with Loading State
+    let mounted = true;
     const initAuth = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-            setUserId(session.user.id);
-            fetchUserStats(session.user.id);
+        try {
+            // Get session
+            const { data: { session } } = await supabase.auth.getSession();
+            if (mounted) {
+                if (session?.user) {
+                    setUserId(session.user.id);
+                    await fetchUserStats(session.user.id).catch(console.error);
+                }
+            }
+        } catch (e) {
+            console.error("Auth initialization error:", e);
+        } finally {
+            if (mounted) setIsAuthLoading(false); // CRITICAL: Stop loading even if auth fails
         }
     };
     initAuth();
 
-    // FIXED: Added types 'any' to parameters to satisfy strict mode
+    // 4. Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+        if (!mounted) return;
         if (session?.user) {
             setUserId(session.user.id);
-            fetchUserStats(session.user.id);
+            fetchUserStats(session.user.id).catch(console.error);
         } else {
             setUserId(null);
             setScanCount(0);
             setIsPremium(false);
         }
+        setIsAuthLoading(false); // Ensure loading stops on change too
     });
 
     return () => {
+        mounted = false;
         subscription.unsubscribe();
     };
   }, []);
@@ -269,6 +287,17 @@ function App() {
   };
 
   const handleSubscribe = async () => { const isPro = await PurchaseService.checkSubscriptionStatus(); setIsPremium(isPro); };
+
+  // --- LOADING SCREEN ---
+  // This replaces the HTML loader once React mounts, preventing the "dead" state.
+  if (isAuthLoading) {
+    return (
+      <div className="fixed inset-0 bg-slate-950 flex items-center justify-center z-50 flex-col">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-white text-sm font-medium animate-pulse">{t.analyzingDeep || "Starting System..."}</p>
+      </div>
+    );
+  }
 
   // --- RENDER ---
   return (
