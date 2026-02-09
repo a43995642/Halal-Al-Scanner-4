@@ -157,20 +157,24 @@ function App() {
     const savedHistory = localStorage.getItem('halalScannerHistory');
     if (savedHistory) { try { setHistory(JSON.parse(savedHistory)); } catch (e) {} }
     
-    // 3. Auth Logic with Loading State
+    // 3. Auth Logic with Loading State & Timeout Protection
     let mounted = true;
     const initAuth = async () => {
         try {
-            // Get session
-            const { data: { session } } = await supabase.auth.getSession();
-            if (mounted) {
-                if (session?.user) {
-                    setUserId(session.user.id);
-                    await fetchUserStats(session.user.id).catch(console.error);
-                }
+            // Safety: If auth takes longer than 5s, proceed as guest to prevent white screen
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Auth Timeout")), 5000));
+            const authPromise = supabase.auth.getSession();
+            
+            // Race the auth check against the timeout
+            const { data } = await Promise.race([authPromise, timeout]) as any;
+
+            if (mounted && data?.session?.user) {
+                setUserId(data.session.user.id);
+                // Background fetch stats, don't block
+                fetchUserStats(data.session.user.id).catch(console.error);
             }
         } catch (e) {
-            console.error("Auth initialization error:", e);
+            console.warn("Auth initialization skipped (timeout or error):", e);
         } finally {
             if (mounted) setIsAuthLoading(false); // CRITICAL: Stop loading even if auth fails
         }
