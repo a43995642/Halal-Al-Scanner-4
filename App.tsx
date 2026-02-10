@@ -216,6 +216,13 @@ function App() {
 
   const handleAnalyze = async () => {
     if (images.length === 0 || isLoading) return;
+    
+    // Quick Internet Check
+    if (!navigator.onLine) {
+        showToast(language === 'ar' ? "لا يوجد اتصال بالإنترنت" : "No Internet Connection");
+        return;
+    }
+
     setIsLoading(true); setError(null); setAnalyzedTextContent(null); setProgress(5); setCurrentPreviewIndex(0);
     const controller = new AbortController(); abortControllerRef.current = controller;
     try {
@@ -306,6 +313,7 @@ function App() {
   // --- RENDER ---
   return (
     <div className="fixed inset-0 bg-black text-white font-sans flex flex-col overflow-hidden">
+
       {/* Modals */}
       {showOnboarding && <OnboardingModal onFinish={() => { localStorage.setItem('halalScannerTermsAccepted', 'true'); setShowOnboarding(false); }} />}
       {showHistory && <HistoryModal history={history} onClose={() => setShowHistory(false)} onLoadItem={(item) => { setResult(item.result); setImages(item.thumbnail ? [item.thumbnail] : []); setShowHistory(false); }} />}
@@ -360,14 +368,18 @@ function App() {
             className={`w-full h-full object-cover transition-opacity duration-500 ${result || isLoading ? 'opacity-0' : 'opacity-100'}`} 
          />
          
-         {/* Viewfinder Corners Overlay */}
+         {/* Viewfinder Corners Overlay - CLEAN (No Laser) */}
          {!result && !isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 opacity-80">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 opacity-80 overflow-hidden">
                <div className="relative w-64 h-64 sm:w-80 sm:h-80 transition-all duration-300">
+                   {/* Clean Corners */}
                    <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-emerald-500 rounded-tl-3xl shadow-sm"></div>
                    <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-emerald-500 rounded-tr-3xl shadow-sm"></div>
                    <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-emerald-500 rounded-bl-3xl shadow-sm"></div>
                    <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-emerald-500 rounded-br-3xl shadow-sm"></div>
+                   
+                   {/* Optional: Subtle center guide */}
+                   <div className="absolute top-1/2 left-1/2 w-4 h-4 -ml-2 -mt-2 border border-white/30 rounded-full"></div>
                </div>
             </div>
          )}

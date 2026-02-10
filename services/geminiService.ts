@@ -1,4 +1,3 @@
-
 import { HalalStatus, ScanResult, Language } from "../types";
 import { Capacitor } from '@capacitor/core';
 import { checkLocalHaram } from "./haramKeywords";
@@ -30,6 +29,11 @@ const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // وظيفة ذكية للاتصال بالإنترنت مع إعادة المحاولة في حال ضعف الشبكة
 const fetchWithRetry = async (url: string, options: RequestInit, signal?: AbortSignal, retries = 2) => {
+  // Network Check
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+     throw new Error("NO_INTERNET");
+  }
+
   for (let i = 0; i <= retries; i++) {
     try {
       const response = await fetch(url, { ...options, signal });
@@ -154,7 +158,12 @@ export const analyzeImage = async (
     const isAr = language === 'ar';
     let userMessage = isAr ? "حدث خطأ غير متوقع." : "Unexpected error.";
     
-    if (error.message === "TIMEOUT_ERROR") {
+    if (error.message === "NO_INTERNET") {
+        userMessage = isAr
+          ? "لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة."
+          : "No internet connection. Please check your network.";
+    }
+    else if (error.message === "TIMEOUT_ERROR") {
         userMessage = isAr
           ? "الخادم مشغول. حاول مرة أخرى أو قلل عدد الصور."
           : "Server timeout. Try fewer images.";
@@ -214,6 +223,10 @@ export const analyzeText = async (
     
     const isAr = language === 'ar';
     let userMessage = isAr ? "تأكد من اتصال الإنترنت." : "Check internet connection.";
+    
+    if (error.message === "NO_INTERNET") {
+        userMessage = isAr ? "لا يوجد اتصال بالإنترنت." : "No internet connection.";
+    }
 
     return {
       status: HalalStatus.NON_FOOD,
