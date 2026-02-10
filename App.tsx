@@ -11,6 +11,7 @@ import { ImagePreviewModal } from './components/ImagePreviewModal';
 import { BarcodeModal } from './components/BarcodeModal';
 import { HistoryModal } from './components/HistoryModal';
 import { TextInputModal } from './components/TextInputModal';
+import { CameraInput } from './components/CameraInput'; // New Import
 
 import { analyzeImage, analyzeText } from './services/geminiService';
 import { fetchProductByBarcode } from './services/openFoodFacts';
@@ -25,7 +26,7 @@ import { useCamera } from './hooks/useCamera';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { App as CapacitorApp } from '@capacitor/app'; 
 import { Capacitor } from '@capacitor/core';
-import { PurchaseService } from './services/purchaseService'; // Import RevenueCat Service
+import { PurchaseService } from './services/purchaseService';
 
 // Constants
 const FREE_SCANS_LIMIT = 20; 
@@ -65,20 +66,19 @@ function App() {
   const [scanCount, setScanCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   
-  // New Loading State for Auth Initialization
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   
   const { language, t } = useLanguage();
   const abortControllerRef = useRef<AbortController | null>(null);
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // We keep useCamera only for the background "Live" feel, but capture is done via CameraInput
   const { 
     videoRef, 
-    isCapturing, 
-    captureImage, 
     toggleTorch, 
     isTorchOn, 
-    hasTorch 
+    hasTorch,
+    isCapturing 
   } = useCamera();
 
   const stateRef = useRef({
@@ -135,7 +135,6 @@ function App() {
     return () => { if (interval) clearInterval(interval); };
   }, [isLoading, images.length]);
 
-  // Helper functions used in auth logic
   const fetchUserStats = async (uid: string) => { 
     const { data } = await supabase.from('user_stats').select('scan_count, is_premium').eq('id', uid).single(); 
     if (data) { 
@@ -148,40 +147,32 @@ function App() {
   };
 
   useEffect(() => {
-    // 1. Init Google Auth
     try { GoogleAuth.initialize({ clientId: WEB_CLIENT_ID, scopes: ['profile', 'email'], grantOfflineAccess: false }); } catch (e) {}
     
-    // 2. Load Local Data
     const accepted = localStorage.getItem('halalScannerTermsAccepted');
     if (accepted !== 'true') setShowOnboarding(true);
     const savedHistory = localStorage.getItem('halalScannerHistory');
     if (savedHistory) { try { setHistory(JSON.parse(savedHistory)); } catch (e) {} }
     
-    // 3. Auth Logic with Loading State & Timeout Protection
     let mounted = true;
     const initAuth = async () => {
         try {
-            // Safety: If auth takes longer than 5s, proceed as guest to prevent white screen
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Auth Timeout")), 5000));
             const authPromise = supabase.auth.getSession();
-            
-            // Race the auth check against the timeout
             const { data } = await Promise.race([authPromise, timeout]) as any;
 
             if (mounted && data?.session?.user) {
                 setUserId(data.session.user.id);
-                // Background fetch stats, don't block
                 fetchUserStats(data.session.user.id).catch(console.error);
             }
         } catch (e) {
-            console.warn("Auth initialization skipped (timeout or error):", e);
+            console.warn("Auth initialization skipped:", e);
         } finally {
-            if (mounted) setIsAuthLoading(false); // CRITICAL: Stop loading even if auth fails
+            if (mounted) setIsAuthLoading(false);
         }
     };
     initAuth();
 
-    // 4. Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
         if (!mounted) return;
         if (session?.user) {
@@ -192,7 +183,7 @@ function App() {
             setScanCount(0);
             setIsPremium(false);
         }
-        setIsAuthLoading(false); // Ensure loading stops on change too
+        setIsAuthLoading(false);
     });
 
     return () => {
@@ -201,23 +192,25 @@ function App() {
     };
   }, []);
   
-  // Helper functions
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
   const saveToHistory = (scanResult: ScanResult, thumbnail?: string) => { const newItem: ScanHistoryItem = { id: Date.now().toString(), date: Date.now(), result: scanResult, thumbnail }; const updatedHistory = [newItem, ...history].slice(0, 30); setHistory(updatedHistory); localStorage.setItem('halalScannerHistory', JSON.stringify(updatedHistory)); };
   
-  const handleCaptureClick = () => {
+  // This is now triggered by the Native Input
+  const handleNativeCapture = (src: string) => {
     if (result) { resetApp(); return; }
-    if (isCapturing) return;
     if (isLoading) return;
     if (!isPremium && scanCount >= FREE_SCANS_LIMIT) { setShowSubscriptionModal(true); return; }
     if (images.length >= MAX_IMAGES_PER_SCAN) { showToast(t.maxImages); return; }
-    captureImage((src) => { const newImages = [...images, src]; setImages(newImages); vibrate(50); showToast(t.imgAdded); }, false);
+    
+    const newImages = [...images, src]; 
+    setImages(newImages); 
+    vibrate(50); 
+    showToast(t.imgAdded);
   };
 
   const handleAnalyze = async () => {
     if (images.length === 0 || isLoading) return;
     
-    // Quick Internet Check
     if (!navigator.onLine) {
         showToast(language === 'ar' ? "لا يوجد اتصال بالإنترنت" : "No Internet Connection");
         return;
@@ -226,8 +219,6 @@ function App() {
     setIsLoading(true); setError(null); setAnalyzedTextContent(null); setProgress(5); setCurrentPreviewIndex(0);
     const controller = new AbortController(); abortControllerRef.current = controller;
     try {
-      // 1. AI PRE-PROCESSING PIPELINE
-      // Create separate high-contrast versions for the OCR
       const width = useLowQuality ? 1024 : 2000;
       const quality = useLowQuality ? 0.7 : 0.85;
       
@@ -235,7 +226,6 @@ function App() {
       
       setProgress(40); progressInterval.current = setInterval(() => { setProgress(prev => (prev >= 90 ? 90 : prev + 2)); }, 200);
       
-      // Analyze the AI-optimized images
       const scanResult = await analyzeImage(aiReadyImages, userId || undefined, true, true, language, controller.signal);
       
       clearInterval(progressInterval.current as any); setProgress(100);
@@ -247,9 +237,7 @@ function App() {
           setResult(scanResult); 
           if (userId) await fetchUserStats(userId); 
           
-          // Save small thumbnail for history (use the nice User version for thumb)
           optimizeImageForDisplay(images[0]).then(img => {
-              // Create a tiny thumb
                const imgObj = new Image();
                imgObj.src = img;
                imgObj.onload = () => {
@@ -299,8 +287,6 @@ function App() {
 
   const handleSubscribe = async () => { const isPro = await PurchaseService.checkSubscriptionStatus(); setIsPremium(isPro); };
 
-  // --- LOADING SCREEN ---
-  // This replaces the HTML loader once React mounts, preventing the "dead" state.
   if (isAuthLoading) {
     return (
       <div className="fixed inset-0 bg-slate-950 flex items-center justify-center z-50 flex-col">
@@ -310,11 +296,9 @@ function App() {
     );
   }
 
-  // --- RENDER ---
   return (
     <div className="fixed inset-0 bg-black text-white font-sans flex flex-col overflow-hidden">
 
-      {/* Modals */}
       {showOnboarding && <OnboardingModal onFinish={() => { localStorage.setItem('halalScannerTermsAccepted', 'true'); setShowOnboarding(false); }} />}
       {showHistory && <HistoryModal history={history} onClose={() => setShowHistory(false)} onLoadItem={(item) => { setResult(item.result); setImages(item.thumbnail ? [item.thumbnail] : []); setShowHistory(false); }} />}
       {showTextModal && <TextInputModal onClose={() => setShowTextModal(false)} onAnalyze={handleAnalyzeText} />}
@@ -340,22 +324,17 @@ function App() {
       {showSubscriptionModal && <SubscriptionModal onSubscribe={handleSubscribe} onClose={() => setShowSubscriptionModal(false)} isLimitReached={false} />}
       {toastMessage && <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gray-900/90 text-white px-6 py-3 rounded-full shadow-xl z-[80] animate-fade-in text-sm font-medium backdrop-blur-sm border border-white/10">{toastMessage}</div>}
 
-      {/* Auth Success Modal */}
       {showAuthSuccess && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in p-4">
             <div className="bg-[#1e1e1e] w-full max-w-sm p-8 rounded-3xl border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.15)] text-center animate-slide-up relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-green-500"></div>
-                <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-400 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-12 h-12"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </div>
                 <h2 className="text-2xl font-bold text-white mb-3">{t.authSuccessTitle}</h2>
-                <p className="text-gray-400 text-sm leading-relaxed mb-8">{t.authSuccessDesc}</p>
-                <button onClick={() => setShowAuthSuccess(false)} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-900/20 active:scale-[0.98]">{t.startScanning}</button>
+                <button onClick={() => setShowAuthSuccess(false)} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition">{t.startScanning}</button>
             </div>
         </div>
       )}
 
-      {/* --- LAYER 1: VIDEO BACKGROUND --- */}
+      {/* BACKGROUND LAYER: Live Video (Viewfinder only) */}
       <div 
         className="absolute inset-0 bg-black z-0" 
         onClick={() => !result && !isLoading && setIsFocusMode(prev => !prev)}
@@ -368,18 +347,13 @@ function App() {
             className={`w-full h-full object-cover transition-opacity duration-500 ${result || isLoading ? 'opacity-0' : 'opacity-100'}`} 
          />
          
-         {/* Viewfinder Corners Overlay - CLEAN (No Laser) */}
          {!result && !isLoading && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 opacity-80 overflow-hidden">
                <div className="relative w-64 h-64 sm:w-80 sm:h-80 transition-all duration-300">
-                   {/* Clean Corners */}
                    <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-emerald-500 rounded-tl-3xl shadow-sm"></div>
                    <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-emerald-500 rounded-tr-3xl shadow-sm"></div>
                    <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-emerald-500 rounded-bl-3xl shadow-sm"></div>
                    <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-emerald-500 rounded-br-3xl shadow-sm"></div>
-                   
-                   {/* Optional: Subtle center guide */}
-                   <div className="absolute top-1/2 left-1/2 w-4 h-4 -ml-2 -mt-2 border border-white/30 rounded-full"></div>
                </div>
             </div>
          )}
@@ -394,14 +368,12 @@ function App() {
          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none z-10"></div>
       </div>
 
-      {/* --- LAYER 2: FLOATING HEADER --- */}
+      {/* HEADER */}
       <div className={`absolute top-0 left-0 right-0 z-20 p-4 pt-[calc(env(safe-area-inset-top)+10px)] flex justify-between items-start transition-all duration-500 ease-in-out ${(isFocusMode && !result) || isLoading ? '-translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}>
-         {/* Settings Button */}
          <button onClick={() => setShowSettings(true)} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white active:bg-white/20">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
          </button>
 
-         {/* Manual Input Button */}
          <button onClick={() => setShowTextModal(true)} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white active:bg-white/20">
              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
          </button>
@@ -417,7 +389,7 @@ function App() {
          </button>
       </div>
 
-      {/* --- LAYER 3: MIDDLE CONTENT --- */}
+      {/* RESULT / ERROR OVERLAYS */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none p-6 pb-48">
          {isLoading && (
             <div className="w-64 bg-black/80 backdrop-blur-xl rounded-2xl p-6 text-center border border-white/10 pointer-events-auto shadow-2xl">
@@ -426,11 +398,9 @@ function App() {
                <button onClick={() => { if (abortControllerRef.current) abortControllerRef.current.abort(); setIsLoading(false); setImages([]); }} className="text-xs text-gray-400 hover:text-white underline decoration-gray-500 underline-offset-4">{t.cancel}</button>
             </div>
          )}
-         {/* Results and Error UI... */}
          {!isLoading && result && (
             <div className="w-full max-w-sm pointer-events-auto animate-fade-in flex flex-col gap-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
                 <StatusBadge status={result.status} />
-                {/* BLACK BACKGROUND HERE */}
                 <div className="bg-black backdrop-blur-md p-5 rounded-2xl border-2 border-white/30 shadow-2xl">
                     <h3 className="text-white font-bold mb-2 flex items-center gap-2 text-lg">{t.resultTitle} {result.confidence && <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-300">{result.confidence}%</span>}</h3>
                     <p className="text-white text-base leading-relaxed font-medium">{result.reason}</p>
@@ -451,24 +421,19 @@ function App() {
          )}
       </div>
 
-      {/* --- LAYER 4: BOTTOM BAR --- */}
+      {/* BOTTOM CONTROL BAR */}
       <div className={`absolute bottom-0 left-0 right-0 z-30 pb-[calc(env(safe-area-inset-bottom)+2rem)] transition-all duration-500 ease-in-out ${(isFocusMode && !result) || isLoading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
          <div className="flex flex-col gap-6 px-6 max-w-md mx-auto">
             <div className="flex justify-between items-center relative pointer-events-auto">
-               {/* LEFT: Gallery OR Preview */}
+               
+               {/* LEFT: GALLERY */}
                <div className="flex flex-col items-center gap-1 w-20">
                   {!isLoading && !result && (
                     <>
                       {images.length > 0 ? (
-                         <button 
-                           onClick={() => setShowPreviewModal(true)} 
-                           className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white/50 transition shadow-lg active:scale-95`}
-                         >
+                         <button onClick={() => setShowPreviewModal(true)} className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white/50 transition shadow-lg active:scale-95`}>
                             <img src={images[images.length - 1]} alt="Last Captured" className="w-full h-full object-cover" />
-                            {/* REMOVED: Dark overlay <span className="absolute inset-0 bg-black/10"></span> */}
-                            <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-bold px-1 rounded-bl-md">
-                               {images.length}
-                            </div>
+                            <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-bold px-1 rounded-bl-md">{images.length}</div>
                          </button>
                       ) : (
                          <label className={`w-12 h-12 rounded-full flex items-center justify-center transition border border-white/10 cursor-pointer active:scale-90 ${isFocusMode ? 'bg-black/40 backdrop-blur-md hover:bg-black/60' : 'bg-[#2c2c2c] hover:bg-[#3d3d3d]'}`}>
@@ -481,7 +446,7 @@ function App() {
                   )}
                </div>
 
-               {/* CENTER: SHUTTER BUTTON */}
+               {/* CENTER: NATIVE CAMERA SHUTTER */}
                <div className="relative -top-3">
                   {isLoading ? (
                       <div className="w-20 h-20 rounded-full border-[5px] border-white/10 bg-black/40 flex items-center justify-center backdrop-blur-md shadow-lg">
@@ -492,13 +457,19 @@ function App() {
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8 text-black"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                      </button>
                   ) : (
-                     <button onClick={handleCaptureClick} className="w-20 h-20 rounded-full border-[5px] border-white/80 bg-white/10 flex items-center justify-center backdrop-blur-sm active:scale-95 transition hover:bg-white/20">
-                        <div className="w-16 h-16 bg-white rounded-full pointer-events-none"></div>
-                     </button>
+                     // THIS IS THE KEY CHANGE: WRAPPING THE BUTTON WITH CAMERAINPUT
+                     <CameraInput 
+                       onCapture={handleNativeCapture}
+                       disabled={isCapturing || isLoading}
+                     >
+                        <button className="w-20 h-20 rounded-full border-[5px] border-white/80 bg-white/10 flex items-center justify-center backdrop-blur-sm active:scale-95 transition hover:bg-white/20">
+                           <div className="w-16 h-16 bg-white rounded-full pointer-events-none shadow-lg"></div>
+                        </button>
+                     </CameraInput>
                   )}
                </div>
 
-               {/* RIGHT: Dynamic (Analyze OR Barcode) */}
+               {/* RIGHT: ANALYZE / BARCODE */}
                <div className="flex flex-col items-center gap-1 w-20">
                   {!isLoading && !result && (
                     <>
