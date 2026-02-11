@@ -22,7 +22,9 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
     minZoom,
     maxZoom,
     supportsZoom,
-    setZoomLevel
+    setZoomLevel,
+    availableCameras,
+    cycleCamera
   } = useCamera();
 
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -140,15 +142,26 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
             
             {/* Top Bar Controls */}
             <div className="absolute top-[env(safe-area-inset-top)] left-0 right-0 p-4 mt-2 z-20 flex justify-between items-start px-6">
-               {hasTorch ? (
-                 <button onClick={toggleTorch} className={`p-3 rounded-full backdrop-blur-md transition active:scale-90 ${isTorchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/30 text-white'}`}>
-                   {isTorchOn ? (
-                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" /></svg>
-                   ) : (
-                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+               <div className="flex gap-3">
+                   {hasTorch && (
+                     <button onClick={toggleTorch} className={`p-3 rounded-full backdrop-blur-md transition active:scale-90 ${isTorchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/30 text-white'}`}>
+                       {isTorchOn ? (
+                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" /></svg>
+                       ) : (
+                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+                       )}
+                     </button>
                    )}
-                 </button>
-               ) : <div className="w-12"></div>}
+                   
+                   {/* Lens Switcher (Only if multiple back cameras found) */}
+                   {availableCameras.length > 1 && (
+                     <button onClick={cycleCamera} className="p-3 rounded-full bg-black/30 text-white backdrop-blur-md transition active:scale-90 hover:bg-black/50">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                     </button>
+                   )}
+               </div>
 
                <button onClick={onClose} className="text-white p-3 rounded-full bg-black/30 backdrop-blur-md hover:bg-black/50 transition active:scale-90">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path d="M6 18L18 6M6 6l12 12" /></svg>
