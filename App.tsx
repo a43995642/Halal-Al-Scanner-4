@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { StatusBadge } from './components/StatusBadge';
-import { SubscriptionModal } from './components/SubscriptionModal';
-import { OnboardingModal } from './components/OnboardingModal';
-import { PrivacyModal } from './components/PrivacyModal'; 
-import { TermsModal } from './components/TermsModal';
-import { SettingsModal } from './components/SettingsModal';
-import { AuthModal } from './components/AuthModal';
-import { CorrectionModal } from './components/CorrectionModal'; 
-import { ImagePreviewModal } from './components/ImagePreviewModal';
-import { BarcodeModal } from './components/BarcodeModal';
-import { HistoryModal } from './components/HistoryModal';
-import { TextInputModal } from './components/TextInputModal';
-import { CameraInput } from './components/CameraInput'; // New Import
+// Lazy Load Modals to improve startup performance
+const SubscriptionModal = React.lazy(() => import('./components/SubscriptionModal').then(m => ({ default: m.SubscriptionModal })));
+const OnboardingModal = React.lazy(() => import('./components/OnboardingModal').then(m => ({ default: m.OnboardingModal })));
+const PrivacyModal = React.lazy(() => import('./components/PrivacyModal').then(m => ({ default: m.PrivacyModal })));
+const TermsModal = React.lazy(() => import('./components/TermsModal').then(m => ({ default: m.TermsModal })));
+const SettingsModal = React.lazy(() => import('./components/SettingsModal').then(m => ({ default: m.SettingsModal })));
+const AuthModal = React.lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
+const CorrectionModal = React.lazy(() => import('./components/CorrectionModal').then(m => ({ default: m.CorrectionModal })));
+const ImagePreviewModal = React.lazy(() => import('./components/ImagePreviewModal').then(m => ({ default: m.ImagePreviewModal })));
+const BarcodeModal = React.lazy(() => import('./components/BarcodeModal').then(m => ({ default: m.BarcodeModal })));
+const HistoryModal = React.lazy(() => import('./components/HistoryModal').then(m => ({ default: m.HistoryModal })));
+const TextInputModal = React.lazy(() => import('./components/TextInputModal').then(m => ({ default: m.TextInputModal })));
 
 import { analyzeImage, analyzeText } from './services/geminiService';
 import { fetchProductByBarcode } from './services/openFoodFacts';
@@ -72,13 +72,13 @@ function App() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // We keep useCamera only for the background "Live" feel, but capture is done via CameraInput
   const { 
     videoRef, 
+    isCapturing, 
+    captureImage, 
     toggleTorch, 
     isTorchOn, 
-    hasTorch,
-    isCapturing 
+    hasTorch 
   } = useCamera();
 
   const stateRef = useRef({
@@ -195,17 +195,13 @@ function App() {
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
   const saveToHistory = (scanResult: ScanResult, thumbnail?: string) => { const newItem: ScanHistoryItem = { id: Date.now().toString(), date: Date.now(), result: scanResult, thumbnail }; const updatedHistory = [newItem, ...history].slice(0, 30); setHistory(updatedHistory); localStorage.setItem('halalScannerHistory', JSON.stringify(updatedHistory)); };
   
-  // This is now triggered by the Native Input
-  const handleNativeCapture = (src: string) => {
+  const handleCaptureClick = () => {
     if (result) { resetApp(); return; }
+    if (isCapturing) return;
     if (isLoading) return;
     if (!isPremium && scanCount >= FREE_SCANS_LIMIT) { setShowSubscriptionModal(true); return; }
     if (images.length >= MAX_IMAGES_PER_SCAN) { showToast(t.maxImages); return; }
-    
-    const newImages = [...images, src]; 
-    setImages(newImages); 
-    vibrate(50); 
-    showToast(t.imgAdded);
+    captureImage((src) => { const newImages = [...images, src]; setImages(newImages); vibrate(50); showToast(t.imgAdded); }, false);
   };
 
   const handleAnalyze = async () => {
@@ -218,6 +214,7 @@ function App() {
 
     setIsLoading(true); setError(null); setAnalyzedTextContent(null); setProgress(5); setCurrentPreviewIndex(0);
     const controller = new AbortController(); abortControllerRef.current = controller;
+    
     try {
       const width = useLowQuality ? 1024 : 2000;
       const quality = useLowQuality ? 0.7 : 0.85;
@@ -226,6 +223,7 @@ function App() {
       
       setProgress(40); progressInterval.current = setInterval(() => { setProgress(prev => (prev >= 90 ? 90 : prev + 2)); }, 200);
       
+      // analyzeImage now handles adaptive compression/retries internally
       const scanResult = await analyzeImage(aiReadyImages, userId || undefined, true, true, language, controller.signal);
       
       clearInterval(progressInterval.current as any); setProgress(100);
@@ -249,7 +247,13 @@ function App() {
                };
           }).catch(() => saveToHistory(scanResult)); 
       }
-    } catch (err: any) { if (err.name === 'AbortError') return; setError(t.unexpectedError); } finally { setIsLoading(false); abortControllerRef.current = null; }
+    } catch (err: any) { 
+        if (err.name === 'AbortError') return; 
+        setError(t.unexpectedError); 
+    } finally { 
+        setIsLoading(false); 
+        abortControllerRef.current = null; 
+    }
   };
 
   const resetApp = () => { setImages([]); setResult(null); setAnalyzedTextContent(null); setError(null); setIsLoading(false); };
@@ -298,43 +302,49 @@ function App() {
 
   return (
     <div className="fixed inset-0 bg-black text-white font-sans flex flex-col overflow-hidden">
+      <Suspense fallback={<div className="fixed inset-0 z-50 bg-black/50" />}>
+        {showOnboarding && <OnboardingModal onFinish={() => { localStorage.setItem('halalScannerTermsAccepted', 'true'); setShowOnboarding(false); }} />}
+        {showHistory && <HistoryModal history={history} onClose={() => setShowHistory(false)} onLoadItem={(item) => { setResult(item.result); setImages(item.thumbnail ? [item.thumbnail] : []); setShowHistory(false); }} />}
+        {showTextModal && <TextInputModal onClose={() => setShowTextModal(false)} onAnalyze={handleAnalyzeText} />}
+        {showBarcodeModal && <BarcodeModal onClose={() => setShowBarcodeModal(false)} onSearch={handleBarcodeSearch} />}
+        {showPreviewModal && <ImagePreviewModal images={images} onDelete={removeImage} onClose={() => setShowPreviewModal(false)} />}
+        {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
+        {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
+        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={() => { setShowAuthModal(false); setShowAuthSuccess(true); fetchUserStats(userId || ''); setTimeout(() => setShowAuthSuccess(false), 4000); }} />}
+        
+        {showCorrectionModal && result && (
+           <CorrectionModal onClose={() => setShowCorrectionModal(false)} result={result} analyzedText={analyzedTextContent} userId={userId} />
+        )}
+        
+        {showSettings && <SettingsModal 
+            onClose={() => setShowSettings(false)} 
+            onClearHistory={() => setHistory([])} 
+            isPremium={isPremium} 
+            onManageSubscription={() => { setShowSettings(false); setShowSubscriptionModal(true); }}
+            onOpenAuth={() => { setShowAuthModal(true); }}
+            onOpenPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }}
+            onOpenTerms={() => { setShowSettings(false); setShowTerms(true); }}
+        />}
+        {showSubscriptionModal && <SubscriptionModal onSubscribe={handleSubscribe} onClose={() => setShowSubscriptionModal(false)} isLimitReached={false} />}
+      </Suspense>
 
-      {showOnboarding && <OnboardingModal onFinish={() => { localStorage.setItem('halalScannerTermsAccepted', 'true'); setShowOnboarding(false); }} />}
-      {showHistory && <HistoryModal history={history} onClose={() => setShowHistory(false)} onLoadItem={(item) => { setResult(item.result); setImages(item.thumbnail ? [item.thumbnail] : []); setShowHistory(false); }} />}
-      {showTextModal && <TextInputModal onClose={() => setShowTextModal(false)} onAnalyze={handleAnalyzeText} />}
-      {showBarcodeModal && <BarcodeModal onClose={() => setShowBarcodeModal(false)} onSearch={handleBarcodeSearch} />}
-      {showPreviewModal && <ImagePreviewModal images={images} onDelete={removeImage} onClose={() => setShowPreviewModal(false)} />}
-      {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
-      {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={() => { setShowAuthModal(false); setShowAuthSuccess(true); fetchUserStats(userId || ''); setTimeout(() => setShowAuthSuccess(false), 4000); }} />}
-      
-      {showCorrectionModal && result && (
-         <CorrectionModal onClose={() => setShowCorrectionModal(false)} result={result} analyzedText={analyzedTextContent} userId={userId} />
-      )}
-      
-      {showSettings && <SettingsModal 
-          onClose={() => setShowSettings(false)} 
-          onClearHistory={() => setHistory([])} 
-          isPremium={isPremium} 
-          onManageSubscription={() => { setShowSettings(false); setShowSubscriptionModal(true); }}
-          onOpenAuth={() => { setShowAuthModal(true); }}
-          onOpenPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }}
-          onOpenTerms={() => { setShowSettings(false); setShowTerms(true); }}
-      />}
-      {showSubscriptionModal && <SubscriptionModal onSubscribe={handleSubscribe} onClose={() => setShowSubscriptionModal(false)} isLimitReached={false} />}
       {toastMessage && <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gray-900/90 text-white px-6 py-3 rounded-full shadow-xl z-[80] animate-fade-in text-sm font-medium backdrop-blur-sm border border-white/10">{toastMessage}</div>}
 
       {showAuthSuccess && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in p-4">
             <div className="bg-[#1e1e1e] w-full max-w-sm p-8 rounded-3xl border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.15)] text-center animate-slide-up relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-green-500"></div>
+                <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-400 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-12 h-12"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
                 <h2 className="text-2xl font-bold text-white mb-3">{t.authSuccessTitle}</h2>
-                <button onClick={() => setShowAuthSuccess(false)} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition">{t.startScanning}</button>
+                <p className="text-gray-400 text-sm leading-relaxed mb-8">{t.authSuccessDesc}</p>
+                <button onClick={() => setShowAuthSuccess(false)} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-900/20 active:scale-[0.98]">{t.startScanning}</button>
             </div>
         </div>
       )}
 
-      {/* BACKGROUND LAYER: Live Video (Viewfinder only) */}
+      {/* --- LAYER 1: VIDEO BACKGROUND --- */}
       <div 
         className="absolute inset-0 bg-black z-0" 
         onClick={() => !result && !isLoading && setIsFocusMode(prev => !prev)}
@@ -354,6 +364,7 @@ function App() {
                    <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-emerald-500 rounded-tr-3xl shadow-sm"></div>
                    <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-emerald-500 rounded-bl-3xl shadow-sm"></div>
                    <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-emerald-500 rounded-br-3xl shadow-sm"></div>
+                   <div className="absolute top-1/2 left-1/2 w-4 h-4 -ml-2 -mt-2 border border-white/30 rounded-full"></div>
                </div>
             </div>
          )}
@@ -368,7 +379,7 @@ function App() {
          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none z-10"></div>
       </div>
 
-      {/* HEADER */}
+      {/* --- LAYER 2: FLOATING HEADER --- */}
       <div className={`absolute top-0 left-0 right-0 z-20 p-4 pt-[calc(env(safe-area-inset-top)+10px)] flex justify-between items-start transition-all duration-500 ease-in-out ${(isFocusMode && !result) || isLoading ? '-translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}>
          <button onClick={() => setShowSettings(true)} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white active:bg-white/20">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -389,7 +400,7 @@ function App() {
          </button>
       </div>
 
-      {/* RESULT / ERROR OVERLAYS */}
+      {/* --- LAYER 3: MIDDLE CONTENT --- */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none p-6 pb-48">
          {isLoading && (
             <div className="w-64 bg-black/80 backdrop-blur-xl rounded-2xl p-6 text-center border border-white/10 pointer-events-auto shadow-2xl">
@@ -421,19 +432,22 @@ function App() {
          )}
       </div>
 
-      {/* BOTTOM CONTROL BAR */}
+      {/* --- LAYER 4: BOTTOM BAR --- */}
       <div className={`absolute bottom-0 left-0 right-0 z-30 pb-[calc(env(safe-area-inset-bottom)+2rem)] transition-all duration-500 ease-in-out ${(isFocusMode && !result) || isLoading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
          <div className="flex flex-col gap-6 px-6 max-w-md mx-auto">
             <div className="flex justify-between items-center relative pointer-events-auto">
-               
-               {/* LEFT: GALLERY */}
                <div className="flex flex-col items-center gap-1 w-20">
                   {!isLoading && !result && (
                     <>
                       {images.length > 0 ? (
-                         <button onClick={() => setShowPreviewModal(true)} className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white/50 transition shadow-lg active:scale-95`}>
+                         <button 
+                           onClick={() => setShowPreviewModal(true)} 
+                           className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white/50 transition shadow-lg active:scale-95`}
+                         >
                             <img src={images[images.length - 1]} alt="Last Captured" className="w-full h-full object-cover" />
-                            <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-bold px-1 rounded-bl-md">{images.length}</div>
+                            <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-bold px-1 rounded-bl-md">
+                               {images.length}
+                            </div>
                          </button>
                       ) : (
                          <label className={`w-12 h-12 rounded-full flex items-center justify-center transition border border-white/10 cursor-pointer active:scale-90 ${isFocusMode ? 'bg-black/40 backdrop-blur-md hover:bg-black/60' : 'bg-[#2c2c2c] hover:bg-[#3d3d3d]'}`}>
@@ -446,7 +460,6 @@ function App() {
                   )}
                </div>
 
-               {/* CENTER: NATIVE CAMERA SHUTTER */}
                <div className="relative -top-3">
                   {isLoading ? (
                       <div className="w-20 h-20 rounded-full border-[5px] border-white/10 bg-black/40 flex items-center justify-center backdrop-blur-md shadow-lg">
@@ -457,19 +470,12 @@ function App() {
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8 text-black"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                      </button>
                   ) : (
-                     // THIS IS THE KEY CHANGE: WRAPPING THE BUTTON WITH CAMERAINPUT
-                     <CameraInput 
-                       onCapture={handleNativeCapture}
-                       disabled={isCapturing || isLoading}
-                     >
-                        <button className="w-20 h-20 rounded-full border-[5px] border-white/80 bg-white/10 flex items-center justify-center backdrop-blur-sm active:scale-95 transition hover:bg-white/20">
-                           <div className="w-16 h-16 bg-white rounded-full pointer-events-none shadow-lg"></div>
-                        </button>
-                     </CameraInput>
+                     <button onClick={handleCaptureClick} className="w-20 h-20 rounded-full border-[5px] border-white/80 bg-white/10 flex items-center justify-center backdrop-blur-sm active:scale-95 transition hover:bg-white/20">
+                        <div className="w-16 h-16 bg-white rounded-full pointer-events-none"></div>
+                     </button>
                   )}
                </div>
 
-               {/* RIGHT: ANALYZE / BARCODE */}
                <div className="flex flex-col items-center gap-1 w-20">
                   {!isLoading && !result && (
                     <>

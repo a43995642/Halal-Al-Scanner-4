@@ -27,44 +27,8 @@ const getBaseUrl = () => {
 // وظيفة انتظار (لإعادة المحاولة)
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// وظيفة ذكية للاتصال بالإنترنت مع إعادة المحاولة في حال ضعف الشبكة
-const fetchWithRetry = async (url: string, options: RequestInit, signal?: AbortSignal, retries = 2) => {
-  // Network Check
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
-     throw new Error("NO_INTERNET");
-  }
-
-  for (let i = 0; i <= retries; i++) {
-    try {
-      const response = await fetch(url, { ...options, signal });
-      if (response.ok) return response;
-
-      // إعادة المحاولة في حالة أخطاء السيرفر (50x)
-      if ([502, 503, 504].includes(response.status)) {
-         if (i < retries) {
-             await wait(1500 * (i + 1)); 
-             continue;
-         }
-      }
-      return response;
-
-    } catch (err: any) {
-      if (err.name === 'AbortError') throw err;
-      
-      // إعادة المحاولة في حالة انقطاع النت
-      if (i < retries && (err.message.includes('Failed to fetch') || err.message.includes('Network'))) {
-         console.log(`Network retry ${i + 1}...`);
-         await wait(2000 * (i + 1));
-         continue;
-      }
-      if (i === retries) throw err;
-    }
-  }
-  throw new Error("FAILED_AFTER_RETRIES");
-};
-
 // وظيفة ضغط الصور (تستخدم معالج الهاتف لتصغير الصورة قبل الإرسال)
-const downscaleImageIfNeeded = (base64Str: string, maxWidth: number, maxHeight: number): Promise<string> => {
+const downscaleImageIfNeeded = (base64Str: string, maxWidth: number, maxHeight: number, quality = 0.85): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = base64Str;
@@ -74,6 +38,8 @@ const downscaleImageIfNeeded = (base64Str: string, maxWidth: number, maxHeight: 
       const height = img.height;
 
       if (width <= maxWidth && height <= maxHeight) {
+        // If dimensions are ok, just return. 
+        // Note: We might want to re-compress if quality is strict, but keeping orig is faster if size OK.
         resolve(base64Str);
         return;
       }
@@ -92,8 +58,7 @@ const downscaleImageIfNeeded = (base64Str: string, maxWidth: number, maxHeight: 
       }
 
       ctx.drawImage(img, 0, 0, newWidth, newHeight);
-      // ضغط الجودة إلى 85% لتقليل استهلاك البيانات
-      resolve(canvas.toDataURL('image/jpeg', 0.85));
+      resolve(canvas.toDataURL('image/jpeg', quality));
     };
     img.onerror = () => resolve(base64Str);
   });
@@ -103,84 +68,117 @@ export const analyzeImage = async (
   base64Images: string[], 
   userId?: string,
   _enhance: boolean = false,
-  enableImageDownscaling: boolean = false,
+  enableImageDownscaling: boolean = true,
   language: Language = 'ar',
   signal?: AbortSignal
 ): Promise<ScanResult> => {
   
-  try {
-    // 1. معالجة الصور داخل الهاتف (Native Optimization)
-    const processedImages = await Promise.all(base64Images.map(async (img) => {
-      let processed = img;
-      // دائماً قم بضغط الصور على الموبايل
-      if (enableImageDownscaling || Capacitor.isNativePlatform()) {
-        processed = await downscaleImageIfNeeded(processed, 1500, 1500);
-      }
-      return processed.replace(/^data:image\/(png|jpg|jpeg|webp);base64,/, "");
-    }));
+  const MAX_RETRIES = 2;
 
-    // 2. الإرسال للسيرفر
-    const baseUrl = getBaseUrl();
-    const endpoint = `${baseUrl}/api/analyze`;
-    
-    console.log("Connecting to:", endpoint);
-    
-    const response = await fetchWithRetry(endpoint, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': userId || 'anonymous',
-            'x-language': language
-        },
-        body: JSON.stringify({
-            images: processedImages
-        })
-    }, signal, 2); 
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+        // --- ADAPTIVE COMPRESSION STRATEGY ---
+        // Attempt 0: High Quality (1500px, 85%) - Good for OCR
+        // Attempt 1: Medium Quality (1024px, 70%) - Faster, less data
+        // Attempt 2: Low Quality (800px, 60%) - Last resort for bad connection
+        
+        let targetWidth = 1500;
+        let targetQuality = 0.85;
 
-    if (!response.ok) {
-        if (response.status === 504) throw new Error("TIMEOUT_ERROR");
-        let errorMessage = `Server Error: ${response.status}`;
-        try {
-            const errData = await response.json();
-            if (response.status === 403 && errData.error === 'LIMIT_REACHED') throw new Error("LIMIT_REACHED"); 
-            if (errData.error || errData.message) errorMessage = errData.message || errData.error;
-        } catch (e) {}
-        throw new Error(errorMessage);
+        if (attempt === 1) {
+            targetWidth = 1024;
+            targetQuality = 0.7;
+            console.log("Retry 1: Compressing images to 1024px/70%...");
+        } else if (attempt === 2) {
+            targetWidth = 800;
+            targetQuality = 0.6;
+            console.log("Retry 2: Aggressive compression to 800px/60%...");
+        }
+
+        // 1. Process images locally
+        const processedImages = await Promise.all(base64Images.map(async (img) => {
+            let processed = img;
+            if (enableImageDownscaling || Capacitor.isNativePlatform() || attempt > 0) {
+                processed = await downscaleImageIfNeeded(processed, targetWidth, targetWidth, targetQuality);
+            }
+            return processed.replace(/^data:image\/(png|jpg|jpeg|webp);base64,/, "");
+        }));
+
+        // 2. Send to Server
+        const baseUrl = getBaseUrl();
+        const endpoint = `${baseUrl}/api/analyze`;
+        
+        console.log(`Connecting to: ${endpoint} (Attempt ${attempt + 1})`);
+        
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-user-id': userId || 'anonymous',
+                'x-language': language
+            },
+            body: JSON.stringify({
+                images: processedImages
+            }),
+            signal: signal
+        });
+
+        if (!response.ok) {
+            // Handle specific HTTP errors that shouldn't be retried
+            if (response.status === 403) {
+                 const errData = await response.json().catch(() => ({}));
+                 if (errData.error === 'LIMIT_REACHED') throw new Error("LIMIT_REACHED");
+            }
+            
+            // If it's a server error (500) or timeout (504), we retry
+            if (response.status >= 500) {
+                throw new Error(`Server Error ${response.status}`);
+            }
+            
+            // Client error (400) usually means bad payload, maybe too big? Retry with compression might help.
+            throw new Error(`HTTP Error ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result as ScanResult;
+
+    } catch (error: any) {
+        if (error.name === 'AbortError') throw error;
+        if (error.message === "LIMIT_REACHED") throw error;
+
+        // Last attempt failed? Throw final error to UI
+        if (attempt === MAX_RETRIES) {
+             const isAr = language === 'ar';
+             let userMessage = isAr ? "حدث خطأ غير متوقع." : "Unexpected error.";
+            
+             if (error.message.includes("NO_INTERNET") || !navigator.onLine) {
+                 userMessage = isAr
+                   ? "لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة."
+                   : "No internet connection. Please check your network.";
+             } else if (error.message.includes("TIMEOUT_ERROR") || error.message.includes("504")) {
+                 userMessage = isAr
+                   ? "الخادم مشغول. حاول مرة أخرى أو قلل عدد الصور."
+                   : "Server timeout. Try fewer images.";
+             } else {
+                 userMessage = isAr 
+                    ? "تعذر الاتصال بالخادم. تأكد من الإنترنت." 
+                    : "Connection failed. Check internet.";
+             }
+
+             return {
+               status: HalalStatus.NON_FOOD,
+               reason: userMessage,
+               ingredientsDetected: [],
+               confidence: 0, 
+             };
+        }
+        
+        // Wait before next retry
+        await wait(1500 * (attempt + 1));
     }
-
-    const result = await response.json();
-    return result as ScanResult;
-
-  } catch (error: any) {
-    if (error.name === 'AbortError') throw error;
-    if (error.message === "LIMIT_REACHED") throw error;
-    
-    const isAr = language === 'ar';
-    let userMessage = isAr ? "حدث خطأ غير متوقع." : "Unexpected error.";
-    
-    if (error.message === "NO_INTERNET") {
-        userMessage = isAr
-          ? "لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة."
-          : "No internet connection. Please check your network.";
-    }
-    else if (error.message === "TIMEOUT_ERROR") {
-        userMessage = isAr
-          ? "الخادم مشغول. حاول مرة أخرى أو قلل عدد الصور."
-          : "Server timeout. Try fewer images.";
-    }
-    else if (error.message.includes("Failed to fetch") || error.message.includes("Network")) {
-        userMessage = isAr
-          ? "تأكد من اتصال الإنترنت وحاول مجدداً."
-          : "Check your internet connection.";
-    }
-
-    return {
-      status: HalalStatus.NON_FOOD,
-      reason: userMessage,
-      ingredientsDetected: [],
-      confidence: 0, 
-    };
   }
+  
+  throw new Error("Unexpected end of loop");
 };
 
 export const analyzeText = async (
@@ -204,15 +202,16 @@ export const analyzeText = async (
     const baseUrl = getBaseUrl();
     const endpoint = `${baseUrl}/api/analyze`;
 
-    const response = await fetchWithRetry(endpoint, {
+    const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'x-user-id': userId || 'anonymous',
             'x-language': language
         },
-        body: JSON.stringify({ text: text })
-    }, signal, 2);
+        body: JSON.stringify({ text: text }),
+        signal
+    });
 
     if (!response.ok) throw new Error(`Server Error: ${response.status}`);
     const result = await response.json();
@@ -224,7 +223,7 @@ export const analyzeText = async (
     const isAr = language === 'ar';
     let userMessage = isAr ? "تأكد من اتصال الإنترنت." : "Check internet connection.";
     
-    if (error.message === "NO_INTERNET") {
+    if (!navigator.onLine) {
         userMessage = isAr ? "لا يوجد اتصال بالإنترنت." : "No internet connection.";
     }
 
