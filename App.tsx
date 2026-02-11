@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { StatusBadge } from './components/StatusBadge';
-// Lazy Load Modals to improve startup performance
+// Lazy Load Modals
 const SubscriptionModal = React.lazy(() => import('./components/SubscriptionModal').then(m => ({ default: m.SubscriptionModal })));
 const OnboardingModal = React.lazy(() => import('./components/OnboardingModal').then(m => ({ default: m.OnboardingModal })));
 const PrivacyModal = React.lazy(() => import('./components/PrivacyModal').then(m => ({ default: m.PrivacyModal })));
@@ -27,11 +27,33 @@ import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { App as CapacitorApp } from '@capacitor/app'; 
 import { Capacitor } from '@capacitor/core';
 import { PurchaseService } from './services/purchaseService';
+import { Clipboard } from '@capacitor/clipboard';
+import { Share } from '@capacitor/share';
 
 // Constants
 const FREE_SCANS_LIMIT = 20; 
 const MAX_IMAGES_PER_SCAN = 4; 
 const WEB_CLIENT_ID = "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com";
+
+// Skeleton Component for Loading State
+const ResultSkeleton = () => (
+  <div className="w-full max-w-sm bg-black/40 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl animate-pulse">
+    <div className="flex flex-col items-center mb-8">
+      <div className="w-24 h-24 rounded-full bg-white/10 mb-4"></div>
+      <div className="h-8 w-32 bg-white/10 rounded-lg mb-2"></div>
+      <div className="h-4 w-20 bg-white/10 rounded-lg"></div>
+    </div>
+    <div className="bg-white/5 p-5 rounded-2xl border border-white/5 space-y-3">
+      <div className="h-4 w-3/4 bg-white/10 rounded"></div>
+      <div className="h-4 w-1/2 bg-white/10 rounded"></div>
+    </div>
+    <div className="mt-4 flex flex-wrap gap-2 justify-center">
+      <div className="h-6 w-16 bg-white/10 rounded-full"></div>
+      <div className="h-6 w-20 bg-white/10 rounded-full"></div>
+      <div className="h-6 w-14 bg-white/10 rounded-full"></div>
+    </div>
+  </div>
+);
 
 function App() {
   const [images, setImages] = useState<string[]>([]);
@@ -99,6 +121,17 @@ function App() {
     document.documentElement.classList.add('dark');
     PurchaseService.initialize();
   }, []);
+  
+  // Handle visibility change to save battery
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isTorchOn) {
+        toggleTorch(); // Turn off torch if app goes background
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isTorchOn, toggleTorch]);
   
   useEffect(() => {
     let backButtonListener: any;
@@ -223,7 +256,6 @@ function App() {
       
       setProgress(40); progressInterval.current = setInterval(() => { setProgress(prev => (prev >= 90 ? 90 : prev + 2)); }, 200);
       
-      // analyzeImage now handles adaptive compression/retries internally
       const scanResult = await analyzeImage(aiReadyImages, userId || undefined, true, true, language, controller.signal);
       
       clearInterval(progressInterval.current as any); setProgress(100);
@@ -253,6 +285,28 @@ function App() {
     } finally { 
         setIsLoading(false); 
         abortControllerRef.current = null; 
+    }
+  };
+
+  const handleCopyResult = async () => {
+    if (!result) return;
+    const textToCopy = `${t.resultTitle} ${result.status}\n${result.reason}\n${t.ingredientsDetected} ${result.ingredientsDetected.map(i => i.name).join(', ')}`;
+    await Clipboard.write({ string: textToCopy });
+    showToast(t.shareCopied);
+  };
+
+  const handleShareResult = async () => {
+    if (!result) return;
+    const textToShare = `${t.resultTitle} ${result.status}\n${result.reason}`;
+    try {
+      await Share.share({
+        title: 'Halal Scanner Result',
+        text: textToShare,
+        dialogTitle: t.share,
+      });
+    } catch (e) {
+      // Fallback to clipboard if share not supported or cancelled
+      handleCopyResult();
     }
   };
 
@@ -403,18 +457,44 @@ function App() {
       {/* --- LAYER 3: MIDDLE CONTENT --- */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none p-6 pb-48">
          {isLoading && (
-            <div className="w-64 bg-black/80 backdrop-blur-xl rounded-2xl p-6 text-center border border-white/10 pointer-events-auto shadow-2xl">
-               <div className="w-full bg-gray-700 rounded-full h-2 mb-4 overflow-hidden"><div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${progress}%` }}></div></div>
-               <p className="text-emerald-400 font-bold animate-pulse text-sm mb-3">{t.analyzingDeep}</p>
-               <button onClick={() => { if (abortControllerRef.current) abortControllerRef.current.abort(); setIsLoading(false); setImages([]); }} className="text-xs text-gray-400 hover:text-white underline decoration-gray-500 underline-offset-4">{t.cancel}</button>
+            <div className="flex flex-col items-center">
+              <ResultSkeleton />
+              <button 
+                onClick={() => { if (abortControllerRef.current) abortControllerRef.current.abort(); setIsLoading(false); setImages([]); }} 
+                className="mt-6 pointer-events-auto bg-black/40 hover:bg-black/60 backdrop-blur-md px-6 py-2 rounded-full text-white text-sm border border-white/10 transition"
+              >
+                {t.cancel}
+              </button>
             </div>
          )}
          {!isLoading && result && (
             <div className="w-full max-w-sm pointer-events-auto animate-fade-in flex flex-col gap-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
                 <StatusBadge status={result.status} />
-                <div className="bg-black backdrop-blur-md p-5 rounded-2xl border-2 border-white/30 shadow-2xl">
+                <div className="bg-black backdrop-blur-md p-5 rounded-2xl border-2 border-white/30 shadow-2xl relative group">
                     <h3 className="text-white font-bold mb-2 flex items-center gap-2 text-lg">{t.resultTitle} {result.confidence && <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-300">{result.confidence}%</span>}</h3>
                     <p className="text-white text-base leading-relaxed font-medium">{result.reason}</p>
+                    
+                    {/* Copy Button */}
+                    <button 
+                      onClick={handleCopyResult}
+                      className="absolute top-4 right-4 text-gray-400 hover:text-white transition bg-white/5 p-2 rounded-lg hover:bg-white/10"
+                      aria-label="Copy"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                      </svg>
+                    </button>
+                    
+                    {/* Share Button */}
+                    <button 
+                      onClick={handleShareResult}
+                      className="absolute top-4 right-14 text-gray-400 hover:text-white transition bg-white/5 p-2 rounded-lg hover:bg-white/10"
+                      aria-label="Share"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                         <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                      </svg>
+                    </button>
                 </div>
                 <div className="flex justify-center">
                    <button onClick={() => setShowCorrectionModal(true)} className="text-gray-400 text-xs flex items-center gap-1.5 hover:text-white transition bg-black/40 px-3 py-1.5 rounded-full border border-white/5">
@@ -462,7 +542,7 @@ function App() {
 
                <div className="relative -top-3">
                   {isLoading ? (
-                      <div className="w-20 h-20 rounded-full border-[5px] border-white/10 bg-black/40 flex items-center justify-center backdrop-blur-md shadow-lg">
+                      <div className="w-20 h-20 rounded-full border-[5px] border-white/10 bg-black/40 flex items-center justify-center backdrop-blur-md shadow-lg animate-pulse">
                            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
                       </div>
                   ) : result ? (
