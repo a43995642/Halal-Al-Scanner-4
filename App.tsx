@@ -457,11 +457,19 @@ function App() {
       {/* --- LAYER 3: MIDDLE CONTENT --- */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none p-6 pb-48">
          {isLoading && (
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center w-full max-w-sm">
               <ResultSkeleton />
+              
+              <div className="w-full max-w-[200px] h-1.5 bg-gray-800 rounded-full mt-6 overflow-hidden">
+                 <div 
+                   className="h-full bg-emerald-500 transition-all duration-300 ease-out" 
+                   style={{ width: `${progress}%` }}
+                 />
+              </div>
+
               <button 
                 onClick={() => { if (abortControllerRef.current) abortControllerRef.current.abort(); setIsLoading(false); setImages([]); }} 
-                className="mt-6 pointer-events-auto bg-black/40 hover:bg-black/60 backdrop-blur-md px-6 py-2 rounded-full text-white text-sm border border-white/10 transition"
+                className="mt-4 pointer-events-auto text-gray-500 hover:text-white text-xs underline decoration-gray-700 underline-offset-4 transition"
               >
                 {t.cancel}
               </button>
