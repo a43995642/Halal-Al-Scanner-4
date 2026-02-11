@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { useCamera } from '../hooks/useCamera';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -18,7 +17,12 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
     openNativeCamera,
     hasTorch,
     isTorchOn,
-    toggleTorch
+    toggleTorch,
+    zoom,
+    minZoom,
+    maxZoom,
+    supportsZoom,
+    setZoomLevel
   } = useCamera();
 
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -74,7 +78,6 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
 
     if (!isLongPressHandled.current) {
       // Short press: Capture and pass false for isMultiShot
-      // We removed the explicit onClose() here because App.tsx will switch to the Editor, effectively unmounting Camera.
       captureImage((src) => {
         onCapture(src, false);
       }, true); 
@@ -86,6 +89,14 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
       <style>{`
         video::-webkit-media-controls { display: none !important; }
         .no-select { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        /* Vertical Slider Customization */
+        input[type=range][orient=vertical] {
+            writing-mode: bt-lr; /* IE */
+            -webkit-appearance: slider-vertical; /* WebKit */
+            width: 8px;
+            height: 100%;
+            padding: 0 5px;
+        }
       `}</style>
 
       {/* Point 3: Very Light Visual Flash (10% opacity) */}
@@ -153,8 +164,26 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-emerald-500 rounded-br-2xl -mb-1 -mr-1 shadow-sm"></div>
                </div>
             </div>
+
+            {/* ZOOM SLIDER (Vertical) */}
+            {supportsZoom && maxZoom > 1 && (
+                <div className="absolute right-6 top-1/2 transform -translate-y-1/2 h-48 z-20 flex flex-col items-center gap-2 bg-black/30 backdrop-blur-md rounded-full py-4 border border-white/10">
+                    <span className="text-[10px] font-bold text-white mb-1">{maxZoom}x</span>
+                    <input 
+                        type="range" 
+                        min={minZoom} 
+                        max={maxZoom} 
+                        step="0.1" 
+                        value={zoom} 
+                        onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
+                        className="w-2 appearance-none bg-white/20 rounded-full h-full outline-none accent-emerald-500 cursor-pointer"
+                        style={{ writingMode: 'vertical-lr', direction: 'ltr' }} 
+                    />
+                    <span className="text-[10px] font-bold text-white mt-1">1x</span>
+                </div>
+            )}
             
-            {/* New Material Design Coach Marks Overlay */}
+            {/* Coach Marks */}
             {showCoachMarks && (
                <div 
                  className="absolute bottom-[160px] left-4 right-4 z-[60] bg-black/80 backdrop-blur-md rounded-2xl p-5 border border-white/10 shadow-2xl animate-slide-up"

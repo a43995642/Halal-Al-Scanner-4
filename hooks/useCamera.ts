@@ -13,6 +13,12 @@ export const useCamera = () => {
   // Camera Capabilities State
   const [hasTorch, setHasTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
+  
+  // Zoom State
+  const [zoom, setZoom] = useState(1);
+  const [minZoom, setMinZoom] = useState(1);
+  const [maxZoom, setMaxZoom] = useState(1);
+  const [supportsZoom, setSupportsZoom] = useState(false);
 
   // Helper to stop all tracks on a stream
   const stopStream = useCallback(() => {
@@ -63,8 +69,10 @@ export const useCamera = () => {
             facingMode: 'environment',
             width: { ideal: 3840 }, 
             height: { ideal: 2160 },
-            frameRate: { ideal: 30, max: 30 } 
-        },
+            frameRate: { ideal: 30, max: 30 },
+            // Try to request zoom initially if supported by browser
+            zoom: 1 
+        } as any,
         audio: false
       };
 
@@ -85,12 +93,24 @@ export const useCamera = () => {
         });
       }
 
-      // --- ISP BALANCED TUNING ---
+      // --- ISP BALANCED TUNING & ZOOM ---
       try {
         const track = stream.getVideoTracks()[0];
         const capabilities = (track.getCapabilities ? track.getCapabilities() : {}) as any;
         const advancedConstraints: any = [];
 
+        // Torch Support
+        if (capabilities.torch) setHasTorch(true);
+
+        // Zoom Support
+        if (capabilities.zoom) {
+            setSupportsZoom(true);
+            setMinZoom(capabilities.zoom.min || 1);
+            setMaxZoom(capabilities.zoom.max || 1);
+            setZoom(capabilities.zoom.min || 1); // Reset zoom
+        }
+
+        // Auto Focus/Exposure/White Balance
         if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
            advancedConstraints.push({ focusMode: 'continuous' });
         }
@@ -100,7 +120,6 @@ export const useCamera = () => {
         if (capabilities.whiteBalanceMode && capabilities.whiteBalanceMode.includes('continuous')) {
             advancedConstraints.push({ whiteBalanceMode: 'continuous' });
         }
-        if (capabilities.torch) setHasTorch(true);
 
         if (advancedConstraints.length > 0) {
             await track.applyConstraints({ advanced: advancedConstraints });
@@ -166,6 +185,17 @@ export const useCamera = () => {
       console.error("Torch toggle failed", e);
     }
   }, [hasTorch, isTorchOn]);
+
+  const setZoomLevel = useCallback(async (zoomValue: number) => {
+      if (!streamRef.current || !supportsZoom) return;
+      const track = streamRef.current.getVideoTracks()[0];
+      try {
+          await track.applyConstraints({ advanced: [{ zoom: zoomValue }] as any });
+          setZoom(zoomValue);
+      } catch (e) {
+          console.error("Zoom failed", e);
+      }
+  }, [supportsZoom]);
 
   const captureImage = useCallback(async (onCapture: (imageSrc: string) => void, shouldClose: boolean = true) => {
     if (isCapturing) return;
@@ -241,5 +271,10 @@ export const useCamera = () => {
     hasTorch,
     isTorchOn,
     toggleTorch,
+    zoom,
+    minZoom,
+    maxZoom,
+    supportsZoom,
+    setZoomLevel
   };
 };

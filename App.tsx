@@ -29,6 +29,7 @@ import { Capacitor } from '@capacitor/core';
 import { PurchaseService } from './services/purchaseService';
 import { Clipboard } from '@capacitor/clipboard';
 import { Share } from '@capacitor/share';
+import { playSuccessSound, playErrorSound, playWarningSound } from './utils/sound'; // Audio Utility
 
 // Constants
 const FREE_SCANS_LIMIT = 20; 
@@ -262,8 +263,15 @@ function App() {
       
       if (scanResult.confidence === 0) { 
           setError(scanResult.reason); 
+          playErrorSound();
       } else { 
-          vibrate([50, 100]); 
+          vibrate([50, 100]);
+          
+          // Audio Feedback based on result
+          if (scanResult.status === HalalStatus.HALAL) playSuccessSound();
+          else if (scanResult.status === HalalStatus.HARAM) playErrorSound();
+          else playWarningSound();
+
           setResult(scanResult); 
           if (userId) await fetchUserStats(userId); 
           
@@ -340,7 +348,17 @@ function App() {
   const handleAnalyzeText = async (text: string) => {
     setShowTextModal(false); setIsLoading(true); setResult(null); setImages([]); setAnalyzedTextContent(text);
     const controller = new AbortController(); abortControllerRef.current = controller;
-    try { const scanResult = await analyzeText(text, userId || undefined, language, controller.signal); setResult(scanResult); saveToHistory(scanResult); } catch (err) { setError(t.unexpectedError); } finally { setIsLoading(false); }
+    try { 
+        const scanResult = await analyzeText(text, userId || undefined, language, controller.signal); 
+        
+        // Audio Feedback
+        if (scanResult.status === HalalStatus.HALAL) playSuccessSound();
+        else if (scanResult.status === HalalStatus.HARAM) playErrorSound();
+        else playWarningSound();
+
+        setResult(scanResult); 
+        saveToHistory(scanResult); 
+    } catch (err) { setError(t.unexpectedError); } finally { setIsLoading(false); }
   };
 
   const handleSubscribe = async () => { const isPro = await PurchaseService.checkSubscriptionStatus(); setIsPremium(isPro); };
