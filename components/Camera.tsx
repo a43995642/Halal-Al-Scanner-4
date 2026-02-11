@@ -23,6 +23,11 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
     maxZoom,
     supportsZoom,
     setZoomLevel,
+    exposure,
+    minExposure,
+    maxExposure,
+    supportsExposure,
+    setExposureLevel,
     availableCameras,
     cycleCamera
   } = useCamera();
@@ -36,10 +41,8 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
   const [showCoachMarks, setShowCoachMarks] = useState(false);
 
   useEffect(() => {
-    // Check if user has seen the coach marks before
     const hasSeen = localStorage.getItem('halalScanner_cameraCoachMarks');
     if (!hasSeen) {
-      // Delay slightly to let camera initialize visually
       const timer = setTimeout(() => setShowCoachMarks(true), 800);
       return () => clearTimeout(timer);
     }
@@ -53,8 +56,6 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
   const LONG_PRESS_DURATION = 800;
 
   const handlePressStart = (_e: React.TouchEvent | React.MouseEvent) => {
-    // Note: We allow capture even if coach marks are shown, to reduce friction.
-    // But if they are shown, we dismiss them on first interaction.
     if (showCoachMarks) {
         dismissCoachMarks();
     }
@@ -62,7 +63,6 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
     isLongPressHandled.current = false;
     pressTimer.current = setTimeout(() => {
       isLongPressHandled.current = true;
-      // Pass true for isMultiShot
       captureImage((src) => onCapture(src, true), false); 
       
       if (navigator.vibrate) navigator.vibrate([15, 30]);
@@ -79,7 +79,6 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
     }
 
     if (!isLongPressHandled.current) {
-      // Short press: Capture and pass false for isMultiShot
       captureImage((src) => {
         onCapture(src, false);
       }, true); 
@@ -178,10 +177,10 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
                </div>
             </div>
 
-            {/* ZOOM SLIDER (Vertical) */}
+            {/* ZOOM SLIDER (Vertical - Right) */}
             {supportsZoom && maxZoom > 1 && (
-                <div className="absolute right-6 top-1/2 transform -translate-y-1/2 h-48 z-20 flex flex-col items-center gap-2 bg-black/30 backdrop-blur-md rounded-full py-4 border border-white/10">
-                    <span className="text-[10px] font-bold text-white mb-1">{maxZoom}x</span>
+                <div className="absolute right-6 top-1/2 transform -translate-y-1/2 h-48 z-20 flex flex-col items-center gap-2 bg-black/30 backdrop-blur-md rounded-full py-4 border border-white/10 shadow-lg">
+                    <span className="text-[10px] font-bold text-white mb-1 drop-shadow-md">{maxZoom}x</span>
                     <input 
                         type="range" 
                         min={minZoom} 
@@ -189,10 +188,32 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
                         step="0.1" 
                         value={zoom} 
                         onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
-                        className="w-2 appearance-none bg-white/20 rounded-full h-full outline-none accent-emerald-500 cursor-pointer"
+                        className="w-2 appearance-none bg-white/30 rounded-full h-full outline-none accent-emerald-500 cursor-pointer"
                         style={{ writingMode: 'vertical-lr', direction: 'ltr' }} 
                     />
-                    <span className="text-[10px] font-bold text-white mt-1">1x</span>
+                    <span className="text-[10px] font-bold text-white mt-1 drop-shadow-md">1x</span>
+                </div>
+            )}
+
+            {/* EXPOSURE SLIDER (Vertical - Left) */}
+            {supportsExposure && (
+                <div className="absolute left-6 top-1/2 transform -translate-y-1/2 h-48 z-20 flex flex-col items-center gap-2 bg-black/30 backdrop-blur-md rounded-full py-4 border border-white/10 shadow-lg">
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-yellow-400 drop-shadow-sm mb-1">
+                       <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
+                     </svg>
+                    <input 
+                        type="range" 
+                        min={minExposure} 
+                        max={maxExposure} 
+                        step="0.5" 
+                        value={exposure} 
+                        onChange={(e) => setExposureLevel(parseFloat(e.target.value))}
+                        className="w-2 appearance-none bg-white/30 rounded-full h-full outline-none accent-yellow-400 cursor-pointer"
+                        style={{ writingMode: 'vertical-lr', direction: 'ltr' }} 
+                    />
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-gray-400 mt-1">
+                      <path fillRule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clipRule="evenodd" />
+                    </svg>
                 </div>
             )}
             
@@ -230,12 +251,12 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onClose }) => {
                        <span>{t.coachHoldTitle}</span>
                     </li>
                     <li className="flex gap-3 items-center">
-                       <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                             <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                       <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 text-yellow-400">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                             <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
                           </svg>
                        </div>
-                       <span>{t.coachAnglesTitle}</span>
+                       <span>{language === 'ar' ? 'استخدم شريط الإضاءة لتحسين الرؤية' : 'Use brightness slider for better visibility'}</span>
                     </li>
                  </ul>
 

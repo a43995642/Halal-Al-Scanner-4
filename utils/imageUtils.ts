@@ -1,7 +1,6 @@
-
 // 1. AI PIPELINE (Aggressive OCR Optimization)
 // This generates the "ugly" but machine-readable version.
-export const createAIOptimizedImage = (base64Str: string, maxWidth = 2000, quality = 0.85): Promise<string> => {
+export const createAIOptimizedImage = (base64Str: string, maxWidth = 3000, quality = 0.9): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = base64Str;
@@ -11,6 +10,7 @@ export const createAIOptimizedImage = (base64Str: string, maxWidth = 2000, quali
       let height = img.height;
       
       // High Res for AI (Keep it as large as reasonable)
+      // Increased maxWidth to 3000 to capture small text details
       if (width > maxWidth) {
         height = Math.round((height * maxWidth) / width);
         width = maxWidth;
@@ -21,11 +21,12 @@ export const createAIOptimizedImage = (base64Str: string, maxWidth = 2000, quali
       const ctx = canvas.getContext('2d');
       if (ctx) {
         // --- THE AI "MAGIC SAUCE" FILTER ---
-        // 1. grayscale(100%): Removes color noise (chromatic aberration) which confuses OCR.
-        // 2. contrast(1.5): Aggressively pulls text from background (makes darks darker, lights lighter).
-        // 3. brightness(1.1): Compensates for the darkening effect of high contrast.
-        // 4. saturate(0): Redundant with grayscale, but ensures no color artifacts.
-        ctx.filter = 'grayscale(100%) contrast(1.5) brightness(1.1)';
+        // Updated for Low Light / Low Contrast / Metallic text issues:
+        // 1. grayscale(100%): Removes color interference (golden text on yellow pack).
+        // 2. contrast(1.75): VERY aggressive contrast to separate text from background.
+        // 3. brightness(1.2): Slight brightness boost to help with low light shadows.
+        // 4. saturate(0): Redundant with grayscale but ensures purity.
+        ctx.filter = 'grayscale(100%) contrast(1.75) brightness(1.2) saturate(0%)';
         
         ctx.drawImage(img, 0, 0, width, height);
         

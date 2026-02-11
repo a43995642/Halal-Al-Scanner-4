@@ -20,6 +20,12 @@ export const useCamera = () => {
   const [maxZoom, setMaxZoom] = useState(1);
   const [supportsZoom, setSupportsZoom] = useState(false);
 
+  // Exposure State (New)
+  const [exposure, setExposure] = useState(0);
+  const [minExposure, setMinExposure] = useState(0);
+  const [maxExposure, setMaxExposure] = useState(0);
+  const [supportsExposure, setSupportsExposure] = useState(false);
+
   // Multi-Camera State
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
@@ -44,16 +50,13 @@ export const useCamera = () => {
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
         
         // Filter for back cameras generally, or take all if facing mode not supported
-        // On mobile, 'environment' usually groups them, but sometimes they are separate IDs
         const backCameras = videoDevices.filter(d => 
             d.label.toLowerCase().includes('back') || 
             d.label.toLowerCase().includes('environment') ||
             d.label.toLowerCase().includes('rear') ||
-            // Fallback for some Androids that don't label well but have multiple IDs
             (videoDevices.length > 1 && !d.label.toLowerCase().includes('front'))
         );
 
-        // If we found specific back cameras, use them. Otherwise, keep list empty to rely on default 'facingMode'
         if (backCameras.length > 1) {
             setAvailableCameras(backCameras);
         }
@@ -67,7 +70,6 @@ export const useCamera = () => {
     
     if (!mountedRef.current) return;
 
-    // Check Permissions first on Native
     if (Capacitor.isNativePlatform()) {
       try {
         const permissions = await Camera.checkPermissions();
@@ -93,7 +95,6 @@ export const useCamera = () => {
     }
 
     try {
-      // Build constraints based on whether we have a specific device ID or just want "back" camera
       const constraints: MediaStreamConstraints = {
         video: deviceId ? { 
             deviceId: { exact: deviceId },
@@ -104,13 +105,11 @@ export const useCamera = () => {
             facingMode: 'environment',
             width: { ideal: 3840 }, 
             height: { ideal: 2160 },
-            frameRate: { ideal: 30, max: 30 },
-            zoom: 1 
+            frameRate: { ideal: 30, max: 30 }
         } as any,
         audio: false
       };
 
-      // Stop previous stream before starting new one (important for switching lenses)
       stopStream();
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -129,15 +128,14 @@ export const useCamera = () => {
         });
       }
 
-      // --- ISP BALANCED TUNING & ZOOM ---
+      // --- ISP BALANCED TUNING & ZOOM & EXPOSURE ---
       try {
         const track = stream.getVideoTracks()[0];
         const capabilities = (track.getCapabilities ? track.getCapabilities() : {}) as any;
         const advancedConstraints: any = [];
 
         // Torch Support
-        if (capabilities.torch) setHasTorch(true);
-        else setHasTorch(false); // Reset if new lens doesn't have torch
+        setHasTorch(!!capabilities.torch);
 
         // Zoom Support
         if (capabilities.zoom) {
@@ -149,10 +147,21 @@ export const useCamera = () => {
             setSupportsZoom(false);
         }
 
-        // Auto Focus/Exposure/White Balance
+        // Exposure Compensation Support
+        if (capabilities.exposureCompensation) {
+            setSupportsExposure(true);
+            setMinExposure(capabilities.exposureCompensation.min);
+            setMaxExposure(capabilities.exposureCompensation.max);
+            setExposure(capabilities.exposureCompensation.min + (capabilities.exposureCompensation.max - capabilities.exposureCompensation.min) / 2); // Set to middle initially
+        } else {
+            setSupportsExposure(false);
+        }
+
+        // Auto Focus/Exposure/White Balance preferences
         if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
            advancedConstraints.push({ focusMode: 'continuous' });
         }
+        // If we support exposure comp, we might still want continuous mode as base
         if (capabilities.exposureMode && capabilities.exposureMode.includes('continuous')) {
            advancedConstraints.push({ exposureMode: 'continuous' });
         }
@@ -233,6 +242,17 @@ export const useCamera = () => {
       }
   }, [supportsZoom]);
 
+  const setExposureLevel = useCallback(async (exposureValue: number) => {
+      if (!streamRef.current || !supportsExposure) return;
+      const track = streamRef.current.getVideoTracks()[0];
+      try {
+          await track.applyConstraints({ advanced: [{ exposureCompensation: exposureValue }] as any });
+          setExposure(exposureValue);
+      } catch (e) {
+          console.error("Exposure failed", e);
+      }
+  }, [supportsExposure]);
+
   const cycleCamera = useCallback(() => {
       if (availableCameras.length <= 1) return;
       
@@ -301,7 +321,7 @@ export const useCamera = () => {
 
   useEffect(() => {
     mountedRef.current = true;
-    discoverCameras(); // Check for lenses
+    discoverCameras(); 
     startCamera();
     return () => {
       mountedRef.current = false;
@@ -323,6 +343,11 @@ export const useCamera = () => {
     maxZoom,
     supportsZoom,
     setZoomLevel,
+    exposure,
+    minExposure,
+    maxExposure,
+    supportsExposure,
+    setExposureLevel,
     availableCameras,
     cycleCamera
   };
