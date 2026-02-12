@@ -26,9 +26,8 @@ const config: CapacitorConfig = {
     },
     GoogleAuth: {
       scopes: ["profile", "email"],
-      // استبدل هذا بـ Web Client ID الخاص بك من Google Cloud Console
-      // يجب أن يطابق Client ID المستخدم في إعدادات Supabase Google Auth
-      serverClientId: "YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com",
+      // تم تحديث المعرف بناءً على الصورة الخاصة بك
+      serverClientId: "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com",
       forceCodeForRefreshToken: true,
     }
   }

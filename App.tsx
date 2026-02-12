@@ -34,7 +34,8 @@ import { playSuccessSound, playErrorSound, playWarningSound } from './utils/soun
 // Constants
 const FREE_SCANS_LIMIT = 20; 
 const MAX_IMAGES_PER_SCAN = 4; 
-const WEB_CLIENT_ID = "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com";
+// Use env var if available, otherwise fallback to the hardcoded one provided by user
+const WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com";
 
 // Skeleton Component for Loading State
 const ResultSkeleton = () => (
@@ -181,7 +182,15 @@ function App() {
   };
 
   useEffect(() => {
-    try { GoogleAuth.initialize({ clientId: WEB_CLIENT_ID, scopes: ['profile', 'email'], grantOfflineAccess: false }); } catch (e) {}
+    try { 
+      GoogleAuth.initialize({ 
+        clientId: WEB_CLIENT_ID, 
+        scopes: ['profile', 'email'], 
+        grantOfflineAccess: false 
+      }); 
+    } catch (e) {
+      console.warn("GoogleAuth init failed", e);
+    }
     
     const accepted = localStorage.getItem('halalScannerTermsAccepted');
     if (accepted !== 'true') setShowOnboarding(true);
