@@ -35,10 +35,15 @@ jobs:
       - name: Generate Keystore & SHA-1
         run: npm run get-sha1
 
+      # IMPORTANT: Pass Secrets to the build command so Vite can bake them into the APK
       - name: Build APK
         run: npm run build-apk
         env:
           CI: true
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
 
       - name: Upload APK and SHA-1 Info
         if: always() # Upload artifacts even if build fails (useful for debugging signing)
