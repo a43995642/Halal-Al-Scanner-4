@@ -5,7 +5,7 @@ const SubscriptionModal = React.lazy(() => import('./components/SubscriptionModa
 const OnboardingModal = React.lazy(() => import('./components/OnboardingModal').then(m => ({ default: m.OnboardingModal })));
 const PrivacyModal = React.lazy(() => import('./components/PrivacyModal').then(m => ({ default: m.PrivacyModal })));
 const TermsModal = React.lazy(() => import('./components/TermsModal').then(m => ({ default: m.TermsModal })));
-const SettingsModal = React.lazy(() => import('./components/SettingsModal').then(m => ({ default: m.SettingsModal })));
+const SettingsModal = React.lazy(() => import('./hooks/SettingsModal')); 
 const AuthModal = React.lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
 const CorrectionModal = React.lazy(() => import('./components/CorrectionModal').then(m => ({ default: m.CorrectionModal })));
 const ImagePreviewModal = React.lazy(() => import('./components/ImagePreviewModal').then(m => ({ default: m.ImagePreviewModal })));

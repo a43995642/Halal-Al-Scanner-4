@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
@@ -31,7 +30,7 @@ interface SettingsModalProps {
   onOpenTerms: () => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ 
+const SettingsModal: React.FC<SettingsModalProps> = ({ 
   onClose, 
   onClearHistory, 
   isPremium, 
@@ -383,3 +382,5 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     </div>
   );
 };
+
+export default SettingsModal;

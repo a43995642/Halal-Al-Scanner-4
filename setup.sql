@@ -1,4 +1,4 @@
--- 1. Create table for User Statistics (Scan count & Premium status)
+-- 1. Create table for User Statistics (Safe if exists)
 create table if not exists public.user_stats (
   id uuid references auth.users on delete cascade not null primary key,
   scan_count int default 0,
@@ -6,19 +6,17 @@ create table if not exists public.user_stats (
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 
--- 2. Enable Row Level Security (RLS) for user_stats
+-- 2. Enable Row Level Security (RLS)
 alter table public.user_stats enable row level security;
 
--- 3. Policy: Users can only view their own stats
+-- 3. Policy: Users can view their own stats
+-- FIX: Drop policy first to avoid "already exists" error
+drop policy if exists "Users can view their own stats" on public.user_stats;
 create policy "Users can view their own stats"
   on public.user_stats for select
   using ( auth.uid() = id );
 
--- 4. Policy: Only Service Role can update stats (prevent users from hacking their count)
--- Note: We don't add an UPDATE policy for users here, so they can't change it via client API.
--- Updates happen via the 'increment_scan_count' function below.
-
--- 5. Create table for User Reports (Corrections)
+-- 4. Create table for Reports
 create table if not exists public.reports (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users on delete set null,
@@ -29,33 +27,36 @@ create table if not exists public.reports (
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
--- 6. Enable RLS for reports
+-- 5. Enable RLS for reports
 alter table public.reports enable row level security;
 
--- 7. Policy: Authenticated users (and anon) can insert reports
+-- 6. Policy: Insert reports
+-- FIX: Drop policy first
+drop policy if exists "Anyone can insert reports" on public.reports;
 create policy "Anyone can insert reports"
   on public.reports for insert
   with check ( true );
 
--- 8. Function to handle new user creation automatically
--- This ensures a row exists in user_stats whenever a user signs up
+-- 7. Function to handle new user creation automatically
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
+  -- Use ON CONFLICT to avoid errors if row already exists
   insert into public.user_stats (id, scan_count, is_premium)
-  values (new.id, 0, false);
+  values (new.id, 0, false)
+  on conflict (id) do nothing;
   return new;
 end;
 $$ language plpgsql security definer;
 
--- 9. Trigger to call the above function on sign up
+-- 8. Trigger to call the above function on sign up
+-- FIX: Drop trigger first
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- 10. RPC Function: Increment Scan Count safely
--- This is called by the backend/client to increase the count without direct table access
+-- 9. RPC Function: Increment Scan Count safely
 create or replace function increment_scan_count(row_id uuid)
 returns void as $$
 begin

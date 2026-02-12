@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
@@ -30,20 +30,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
       return window.location.origin;
   };
 
-  const checkConfig = () => {
-    if (!isSupabaseConfigured) {
-        setError(language === 'ar' 
-            ? 'عذراً، لم يتم إعداد خوادم تسجيل الدخول (Supabase Keys مفقودة).' 
-            : 'Login setup missing (VITE_SUPABASE_URL not found).');
-        return false;
-    }
-    return true;
-  };
+  // --- HANDLE MISSING CONFIGURATION (GUEST MODE) ---
+  if (!isSupabaseConfigured) {
+    return (
+        <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" dir={dir}>
+          <div className="bg-[#1e1e1e] rounded-3xl w-full max-w-sm shadow-2xl border border-white/10 animate-slide-up p-8 text-center relative overflow-hidden">
+             
+             <button 
+                onClick={onClose}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white p-2"
+             >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+             </button>
+
+             <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10 text-gray-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+                </svg>
+             </div>
+             
+             <h3 className="text-xl font-bold text-white mb-3">
+                {language === 'ar' ? 'الخدمة السحابية غير مفعلة' : 'Cloud Service Not Configured'}
+             </h3>
+             
+             <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+               {language === 'ar' 
+                 ? "لم يتم ربط قاعدة البيانات (Supabase) بهذا التطبيق بعد. يمكنك استخدام جميع ميزات الفحص والذكاء الاصطناعي كزائر بدون تسجيل."
+                 : "The database (Supabase) is not connected yet. You can still use all scanning and AI features as a guest."}
+             </p>
+
+             <button 
+                onClick={onClose} 
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-900/20 active:scale-[0.98]"
+             >
+               {language === 'ar' ? 'متابعة كزائر' : 'Continue as Guest'}
+             </button>
+          </div>
+        </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!checkConfig()) return;
-
     setIsLoading(true);
     setError(null);
 
@@ -99,6 +127,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
       let msg = err.message;
       if (msg.includes('User already registered')) msg = language === 'ar' ? 'هذا البريد مسجل مسبقاً، حاول تسجيل الدخول.' : 'User already registered. Please sign in.';
       else if (msg.includes('Invalid login credentials')) msg = language === 'ar' ? 'بيانات الدخول غير صحيحة.' : 'Invalid email or password.';
+      else if (msg.includes('Failed to fetch')) msg = language === 'ar' ? 'تعذر الاتصال بالخادم. تحقق من الإنترنت أو إعدادات قاعدة البيانات.' : 'Connection failed. Check internet or DB config.';
       
       setError(msg || t.unexpectedError);
     } finally {
@@ -107,8 +136,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   };
 
   const handleGoogleLogin = async () => {
-    if (!checkConfig()) return;
-
     setError(null);
     try {
       if (Capacitor.isNativePlatform()) {
