@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -161,19 +162,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         }
       }
 
-      // 2. Web OAuth Fallback (Opens Browser)
+      // 2. Web OAuth Fallback (Opens Browser Safely to avoid 403 disallowed_useragent)
       const redirectUrl = getRedirectUrl();
       console.log("Starting OAuth with redirect:", redirectUrl);
 
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
            redirectTo: redirectUrl,
-           queryParams: { access_type: 'offline', prompt: 'consent' }
+           queryParams: { access_type: 'offline', prompt: 'consent' },
+           skipBrowserRedirect: true // CRITICAL: Prevent Supabase from trying to open in WebView
         }
       });
       
       if (error) throw error;
+      
+      // Manually open the URL in Chrome Custom Tabs (Allowed User Agent)
+      if (data?.url) {
+         await Browser.open({ url: data.url });
+         // We close the modal, assuming the app will handle the redirect via Deep Link in App.tsx
+         onClose(); 
+      }
       
     } catch (err: any) {
       console.error("Google Auth Error:", err);

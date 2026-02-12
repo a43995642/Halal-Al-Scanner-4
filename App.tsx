@@ -137,7 +137,9 @@ function App() {
   
   useEffect(() => {
     let backButtonListener: any;
-    const setupBackButton = async () => {
+    let urlListener: any;
+
+    const setupListeners = async () => {
       backButtonListener = await CapacitorApp.addListener('backButton', () => {
         const s = stateRef.current;
         if (s.showOnboarding) { CapacitorApp.exitApp(); return; }
@@ -157,9 +159,45 @@ function App() {
         if (s.images.length > 0 && !s.isLoading) { setImages([]); return; }
         CapacitorApp.exitApp();
       });
+
+      // Handle Deep Link from OAuth (for fallback flow in Chrome Custom Tabs)
+      urlListener = await CapacitorApp.addListener('appUrlOpen', async ({ url }) => {
+         try {
+             // Basic Check if URL is relevant to Auth
+             if (url.includes('access_token') || url.includes('refresh_token') || url.includes('code=')) {
+                 // Try to exchange code if present (PKCE) or extract tokens
+                 const urlObj = new URL(url);
+                 const params = new URLSearchParams(urlObj.search || urlObj.hash.substring(1));
+                 
+                 const code = params.get('code');
+                 const accessToken = params.get('access_token');
+                 const refreshToken = params.get('refresh_token');
+
+                 if (code) {
+                     await supabase.auth.exchangeCodeForSession(code);
+                 } else if (accessToken && refreshToken) {
+                     await supabase.auth.setSession({
+                         access_token: accessToken,
+                         refresh_token: refreshToken,
+                     });
+                 }
+                 
+                 // Close auth modal if open
+                 setShowAuthModal(false);
+                 setShowAuthSuccess(true);
+                 setTimeout(() => setShowAuthSuccess(false), 4000);
+             }
+         } catch (e) {
+             console.error("Deep Link Auth Error:", e);
+         }
+      });
     };
-    setupBackButton();
-    return () => { if (backButtonListener) backButtonListener.remove(); };
+
+    setupListeners();
+    return () => { 
+        if (backButtonListener) backButtonListener.remove(); 
+        if (urlListener) urlListener.remove();
+    };
   }, []);
 
   useEffect(() => {
