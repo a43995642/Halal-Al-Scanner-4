@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
@@ -31,8 +30,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
       return window.location.origin;
   };
 
+  const checkConfig = () => {
+    if (!isSupabaseConfigured) {
+        setError(language === 'ar' 
+            ? 'عذراً، لم يتم إعداد خوادم تسجيل الدخول (Supabase Keys مفقودة).' 
+            : 'Login setup missing (VITE_SUPABASE_URL not found).');
+        return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkConfig()) return;
+
     setIsLoading(true);
     setError(null);
 
@@ -96,6 +107,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   };
 
   const handleGoogleLogin = async () => {
+    if (!checkConfig()) return;
+
     setError(null);
     try {
       if (Capacitor.isNativePlatform()) {

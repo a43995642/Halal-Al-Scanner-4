@@ -15,12 +15,15 @@ const isValidUrl = (url: string | undefined): boolean => {
   }
 };
 
+// Check if configuration is valid
+export const isSupabaseConfigured = isValidUrl(envUrl) && !!envKey;
+
 // Fallback to dummy values if keys are missing to prevent "supabaseUrl is required" crash
 // This ensures the app boots up even if .env is missing (runs in Guest/Offline mode)
-const supabaseUrl = isValidUrl(envUrl) ? envUrl : 'https://placeholder.supabase.co';
+const supabaseUrl = isSupabaseConfigured ? envUrl : 'https://placeholder.supabase.co';
 const supabaseAnonKey = envKey || 'placeholder-key';
 
-if (!isValidUrl(envUrl) || !envKey) {
+if (!isSupabaseConfigured) {
   console.warn('⚠️ Supabase Keys are missing or invalid! App running in offline/demo mode. Auth features will be disabled.');
 }
 
@@ -29,5 +32,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    // Disable URL detection if using placeholder to prevent redirect loops or errors
+    detectSessionInUrl: isSupabaseConfigured,
   }
 }) as any;

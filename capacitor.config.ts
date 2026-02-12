@@ -7,7 +7,6 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https',
-    // Removed specific hostname to allow local loading from internal assets which is more stable
     cleartext: true,
     allowNavigation: [
       "*.vercel.app",
@@ -27,8 +26,10 @@ const config: CapacitorConfig = {
     },
     GoogleAuth: {
       scopes: ["profile", "email"],
-      serverClientId: "565514314234-9ae9k1bf0hhubkacivkuvpu01duqfthv.apps.googleusercontent.com",
-      forceCodeForRefreshToken: false,
+      // استبدل هذا بـ Web Client ID الخاص بك من Google Cloud Console
+      // يجب أن يطابق Client ID المستخدم في إعدادات Supabase Google Auth
+      serverClientId: "YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com",
+      forceCodeForRefreshToken: true,
     }
   }
 };
