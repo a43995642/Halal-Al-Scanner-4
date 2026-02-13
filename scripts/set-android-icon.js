@@ -19,6 +19,7 @@ console.log(`📂 Target Resource Folder: ${androidRes}`);
 
 if (!existsSync(androidRes)) {
     console.error('❌ Android resources folder not found.');
+    console.error('💡 TIP: Run "npx cap add android" first to generate the platform folder.');
     if (process.argv.includes('--force')) process.exit(0);
     process.exit(1);
 }
