@@ -422,9 +422,15 @@ function App() {
   return (
     <div className="fixed inset-0 bg-black text-white font-sans flex flex-col overflow-hidden">
       <style>{`
-        video::-webkit-media-controls { display: none !important; }
-        video::-webkit-media-controls-play-button { display: none !important; }
-        video::-webkit-media-controls-start-playback-button { display: none !important; }
+        video::-webkit-media-controls,
+        video::-webkit-media-controls-play-button,
+        video::-webkit-media-controls-start-playback-button,
+        video::-webkit-media-controls-overlay-play-button,
+        video::-webkit-media-controls-enclosure {
+          display: none !important;
+          -webkit-appearance: none;
+          opacity: 0;
+        }
       `}</style>
 
       <Suspense fallback={<div className="fixed inset-0 z-50 bg-black/50" />}>
@@ -479,6 +485,7 @@ function App() {
             autoPlay 
             playsInline 
             muted 
+            disablePictureInPicture
             className={`w-full h-full object-cover transition-opacity duration-500 ${result || isLoading ? 'opacity-0' : 'opacity-100'}`} 
          />
          
