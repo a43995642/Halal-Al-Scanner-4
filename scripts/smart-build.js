@@ -1,7 +1,8 @@
 
 import { spawn, execSync } from 'child_process';
-import { readdirSync, existsSync, chmodSync, readFileSync } from 'fs';
+import { readdirSync, existsSync, chmodSync, readFileSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
+import { platform, homedir } from 'os';
 
 // Get Build Mode from arguments
 const mode = process.argv[2] || 'debug'; // 'debug', 'release', or 'bundle'
@@ -10,8 +11,48 @@ console.log(`\n🚀 Starting Smart Android Build [Mode: ${mode.toUpperCase()}]..
 
 const androidDir = resolve('android');
 const gradlePropsPath = join(androidDir, 'gradle.properties');
+const localPropsPath = join(androidDir, 'local.properties');
 
-// 1. Determine Java Home
+// --- STEP 0: ENSURE ANDROID SDK ---
+console.log('🔍 Checking Android SDK environment...');
+
+let sdkPath = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+
+if (!sdkPath || !existsSync(sdkPath)) {
+    // Try common locations
+    const candidates = [
+        join(homedir(), 'Android', 'Sdk'), // Standard Linux/Mac
+        join(homedir(), 'android-sdk'),
+        '/usr/lib/android-sdk', // Common Linux apt package
+        '/opt/android-sdk',
+        '/Library/Android/sdk', // Mac standard
+        join(homedir(), 'AppData', 'Local', 'Android', 'Sdk') // Windows
+    ];
+
+    for (const cand of candidates) {
+        if (cand && existsSync(cand)) {
+            sdkPath = cand;
+            console.log(`✅ Found Android SDK at: ${sdkPath}`);
+            break;
+        }
+    }
+}
+
+if (sdkPath) {
+    // Write to local.properties
+    // Escape backslashes for Windows
+    const escapedPath = process.platform === 'win32' ? sdkPath.replace(/\\/g, '\\\\') : sdkPath;
+    const localContent = `sdk.dir=${escapedPath}\n`;
+    writeFileSync(localPropsPath, localContent);
+    console.log(`📄 Generated local.properties with sdk.dir=${sdkPath}`);
+} else {
+    console.warn('⚠️  ANDROID SDK NOT FOUND AUTOMATICALLY.');
+    console.warn('   The build might fail if "sdk.dir" is missing in local.properties or ANDROID_HOME is not set.');
+    // We don't exit here, we let Gradle fail if it really can't find it, or maybe Gradle wrapper handles it.
+}
+
+
+// --- STEP 1: JAVA SETUP ---
 // Priority: 
 // 1. org.gradle.java.home in gradle.properties (set by force-java script)
 // 2. JAVA_HOME environment variable
@@ -69,6 +110,9 @@ if (javaHome) {
     env.JAVA_HOME = javaHome;
     // Prepend to PATH to ensure 'java' command maps to this JDK
     env.PATH = `${join(javaHome, 'bin')}:${env.PATH}`;
+}
+if (sdkPath) {
+    env.ANDROID_HOME = sdkPath;
 }
 
 const isWin = process.platform === 'win32';
@@ -131,6 +175,7 @@ buildProcess.on('close', (code) => {
         console.log(outputMsg);
     } else {
         console.error(`\n❌ Build Failed with code ${code}. See logs above.`);
+        console.error(`💡 Tip: If error is "SDK location not found", ensure Android SDK is installed.`);
         process.exit(code);
     }
 });
