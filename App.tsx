@@ -421,6 +421,12 @@ function App() {
 
   return (
     <div className="fixed inset-0 bg-black text-white font-sans flex flex-col overflow-hidden">
+      <style>{`
+        video::-webkit-media-controls { display: none !important; }
+        video::-webkit-media-controls-play-button { display: none !important; }
+        video::-webkit-media-controls-start-playback-button { display: none !important; }
+      `}</style>
+
       <Suspense fallback={<div className="fixed inset-0 z-50 bg-black/50" />}>
         {showOnboarding && <OnboardingModal onFinish={() => { localStorage.setItem('halalScannerTermsAccepted', 'true'); setShowOnboarding(false); }} />}
         {showHistory && <HistoryModal history={history} onClose={() => setShowHistory(false)} onLoadItem={(item) => { setResult(item.result); setImages(item.thumbnail ? [item.thumbnail] : []); setShowHistory(false); }} />}
