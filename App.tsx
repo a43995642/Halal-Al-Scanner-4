@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { StatusBadge } from './components/StatusBadge';
 // Lazy Load Modals
@@ -73,6 +74,7 @@ function App() {
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false); // Track if camera is actually playing
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -102,7 +104,9 @@ function App() {
     captureImage, 
     toggleTorch, 
     isTorchOn, 
-    hasTorch 
+    hasTorch,
+    error: cameraError,
+    openNativeCamera
   } = useCamera();
 
   const stateRef = useRef({
@@ -278,6 +282,7 @@ function App() {
   
   const handleCaptureClick = () => {
     if (result) { resetApp(); return; }
+    if (cameraError) { openNativeCamera((src) => { const newImages = [...images, src]; setImages(newImages); }); return; }
     if (isCapturing) return;
     if (isLoading) return;
     if (!isPremium && scanCount >= FREE_SCANS_LIMIT) { setShowSubscriptionModal(true); return; }
@@ -480,17 +485,40 @@ function App() {
         className="absolute inset-0 bg-black z-0" 
         onClick={() => !result && !isLoading && setIsFocusMode(prev => !prev)}
       >
+         {/* Error State for Camera */}
+         {cameraError && !result && !isLoading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 z-20 p-6 text-center">
+                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4 text-red-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.008v.008H12v-.008z" />
+                    </svg>
+                </div>
+                <h3 className="text-white font-bold text-lg mb-2">{t.cameraErrorTitle}</h3>
+                <p className="text-gray-400 text-sm mb-6">{cameraError}</p>
+                <button 
+                  onClick={() => openNativeCamera((src) => { 
+                      setImages([...images, src]); 
+                  })}
+                  className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition"
+                >
+                   {t.useNativeCamera}
+                </button>
+            </div>
+         )}
+
+         {/* Actual Video Element - Hidden until playing to prevent 'Play' icon */}
          <video 
             ref={videoRef} 
             autoPlay 
             playsInline 
             muted 
             disablePictureInPicture
-            className={`w-full h-full object-cover transition-opacity duration-500 ${result || isLoading ? 'opacity-0' : 'opacity-100'}`} 
+            onPlaying={() => setIsVideoReady(true)}
+            className={`w-full h-full object-cover transition-opacity duration-500 ${!result && !isLoading && !cameraError && isVideoReady ? 'opacity-100' : 'opacity-0'}`} 
          />
          
-         {!result && !isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 opacity-80 overflow-hidden">
+         {!result && !isLoading && !cameraError && (
+            <div className={`absolute inset-0 flex items-center justify-center pointer-events-none z-10 opacity-80 overflow-hidden transition-opacity duration-500 ${isVideoReady ? 'opacity-80' : 'opacity-0'}`}>
                <div className="relative w-64 h-64 sm:w-80 sm:h-80 transition-all duration-300">
                    <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-emerald-500 rounded-tl-3xl shadow-sm"></div>
                    <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-emerald-500 rounded-tr-3xl shadow-sm"></div>
