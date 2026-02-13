@@ -56,7 +56,8 @@ export default defineConfig(() => {
               if (id.includes('react') || id.includes('react-dom')) {
                 return 'vendor-react';
               }
-              if (id.includes('@capacitor')) {
+              // Fix circular dependencies by grouping all mobile/native libs together
+              if (id.includes('@capacitor') || id.includes('codetrix') || id.includes('revenuecat')) {
                 return 'vendor-capacitor';
               }
               return 'vendor-libs';
