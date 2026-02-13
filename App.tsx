@@ -415,15 +415,6 @@ function App() {
 
   const handleSubscribe = async () => { const isPro = await PurchaseService.checkSubscriptionStatus(); setIsPremium(isPro); };
 
-  if (isAuthLoading) {
-    return (
-      <div className="fixed inset-0 bg-slate-950 flex items-center justify-center z-50 flex-col">
-          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-white text-sm font-medium animate-pulse">{t.analyzingDeep || "Starting System..."}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="fixed inset-0 bg-black text-white font-sans flex flex-col overflow-hidden">
       <style>{`
