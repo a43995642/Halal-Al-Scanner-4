@@ -1,6 +1,6 @@
 
 import { spawn, execSync } from 'child_process';
-import { readdirSync, existsSync, chmodSync } from 'fs';
+import { readdirSync, existsSync, chmodSync, readFileSync } from 'fs';
 import { join, resolve } from 'path';
 
 // Get Build Mode from arguments
@@ -8,54 +8,79 @@ const mode = process.argv[2] || 'debug'; // 'debug', 'release', or 'bundle'
 
 console.log(`\n🚀 Starting Smart Android Build [Mode: ${mode.toUpperCase()}]...\n`);
 
-// 1. Find compatible Java (Priority: 17 > 21 > 11)
-const jvmBaseDir = '/usr/lib/jvm';
+const androidDir = resolve('android');
+const gradlePropsPath = join(androidDir, 'gradle.properties');
+
+// 1. Determine Java Home
+// Priority: 
+// 1. org.gradle.java.home in gradle.properties (set by force-java script)
+// 2. JAVA_HOME environment variable
+// 3. Dynamic search in /usr/lib/jvm
+
 let javaHome = process.env.JAVA_HOME;
 let foundCompatibleJDK = false;
 
-if (existsSync(jvmBaseDir)) {
-    try {
-        const entries = readdirSync(jvmBaseDir);
-        const candidates = entries.filter(e => {
-            const lower = e.toLowerCase();
-            return (lower.includes('17') || lower.includes('21') || lower.includes('11')) && 
-                   !lower.includes('common') && 
-                   !lower.includes('doc') &&
-                   !e.startsWith('.') &&
-                   !e.endsWith('.jinfo');
-        }).sort();
-
-        const bestMatch = candidates.find(c => c.includes('17')) || 
-                          candidates.find(c => c.includes('21')) || 
-                          candidates[0];
-
-        if (bestMatch) {
-            javaHome = join(jvmBaseDir, bestMatch);
+// Check gradle.properties first
+if (existsSync(gradlePropsPath)) {
+    const props = readFileSync(gradlePropsPath, 'utf-8');
+    const match = props.match(/org\.gradle\.java\.home=(.*)/);
+    if (match && match[1]) {
+        const configuredHome = match[1].trim();
+        if (existsSync(configuredHome)) {
+            javaHome = configuredHome;
             foundCompatibleJDK = true;
-            console.log(`✅ FORCE USING COMPATIBLE JDK: ${javaHome}`);
+            console.log(`✅ Using configured JDK from gradle.properties: ${javaHome}`);
         }
-    } catch (e) {
-        console.warn("⚠️ Could not scan /usr/lib/jvm, using system default.");
+    }
+}
+
+// Fallback search if not configured
+if (!foundCompatibleJDK) {
+    const jvmBaseDir = '/usr/lib/jvm';
+    if (existsSync(jvmBaseDir)) {
+        try {
+            const entries = readdirSync(jvmBaseDir);
+            const candidates = entries.filter(e => {
+                const lower = e.toLowerCase();
+                return (lower.includes('17') || lower.includes('21') || lower.includes('11')) && 
+                       !lower.includes('common') && 
+                       !lower.includes('doc') &&
+                       !e.startsWith('.');
+            }).sort();
+
+            const bestMatch = candidates.find(c => c.includes('17')) || 
+                              candidates.find(c => c.includes('21')) || 
+                              candidates[0];
+
+            if (bestMatch) {
+                javaHome = join(jvmBaseDir, bestMatch);
+                foundCompatibleJDK = true;
+                console.log(`✅ FORCE USING DETECTED JDK: ${javaHome}`);
+            }
+        } catch (e) {
+            console.warn("⚠️ Could not scan /usr/lib/jvm, using system default.");
+        }
     }
 }
 
 // 2. Prepare Environment
 const env = { ...process.env };
-if (foundCompatibleJDK && javaHome) {
+if (javaHome) {
     env.JAVA_HOME = javaHome;
+    // Prepend to PATH to ensure 'java' command maps to this JDK
     env.PATH = `${join(javaHome, 'bin')}:${env.PATH}`;
 }
 
-const androidDir = resolve('android');
 const isWin = process.platform === 'win32';
 let gradleCmd = isWin ? 'gradlew.bat' : './gradlew';
 const wrapperPath = join(androidDir, isWin ? 'gradlew.bat' : 'gradlew');
 
 // 3. Ensure Gradle Wrapper Exists
 if (!existsSync(wrapperPath)) {
-    console.warn(`⚠️ Gradle Wrapper missing. Generating one (v8.4)...`);
+    console.warn(`⚠️ Gradle Wrapper missing. Generating one (v8.12)...`);
     try {
-        execSync(`gradle wrapper --gradle-version 8.4`, { 
+        // Use the specific java env to run gradle if possible
+        execSync(`gradle wrapper --gradle-version 8.12`, { 
             cwd: androidDir, 
             env: env,
             stdio: 'inherit' 
