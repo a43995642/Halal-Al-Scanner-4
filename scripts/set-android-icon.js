@@ -4,10 +4,9 @@ import { join, resolve } from 'path';
 
 // Resolve paths relative to where the script is executed (Project Root)
 const iconSource = resolve('icon.png');
-const splashSourceSpecific = resolve('splash_icon.png'); // New separate file for splash
 const androidRes = resolve('android', 'app', 'src', 'main', 'res');
 
-console.log('\n🎨 --- STARTING ADVANCED ICON & SPLASH UPDATE ---');
+console.log('\n🎨 --- STARTING BLACK SPLASH SCREEN UPDATE ---');
 
 // 1. Determine Sources
 if (!existsSync(iconSource)) {
@@ -15,17 +14,7 @@ if (!existsSync(iconSource)) {
     process.exit(1);
 }
 
-// Check if user provided a specific splash icon, otherwise fallback to main icon
-let finalSplashSource = iconSource;
-if (existsSync(splashSourceSpecific)) {
-    console.log('✨ Found custom splash_icon.png! Using it for Splash Screen.');
-    finalSplashSource = splashSourceSpecific;
-} else {
-    console.log('ℹ️ No splash_icon.png found. Using icon.png for both App Icon and Splash.');
-}
-
 console.log(`📂 App Icon Source: ${iconSource}`);
-console.log(`📂 Splash Image Source: ${finalSplashSource}`);
 console.log(`📂 Target Resource Folder: ${androidRes}`);
 
 if (!existsSync(androidRes)) {
@@ -34,18 +23,14 @@ if (!existsSync(androidRes)) {
     process.exit(1);
 }
 
-// 2. XML Content for Splash Screen (White background + Centered Image)
+// 2. XML Content for Splash Screen (PURE BLACK BACKGROUND, NO IMAGE)
+// We removed the <bitmap> item to ensure no logo is shown.
 const splashXmlContent = `<?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#ffffff"/>
+            <solid android:color="#000000"/>
         </shape>
-    </item>
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/splash_img" />
     </item>
 </layer-list>`;
 
@@ -60,22 +45,18 @@ try {
 
         // --- HANDLE SPLASH SCREEN (Drawable Folders) ---
         if (folder.startsWith('drawable')) {
-            // A. Copy the SPLASH SOURCE as "splash_img.png"
-            try {
-                copyFileSync(finalSplashSource, join(folderPath, 'splash_img.png'));
-            } catch (e) { console.warn(`   ⚠️ Error copying splash_img to ${folder}`); }
+            // A. Remove any existing splash images to be safe
+            const oldSplashPng = join(folderPath, 'splash.png');
+            const oldSplashImg = join(folderPath, 'splash_img.png');
+            
+            if (existsSync(oldSplashPng)) try { unlinkSync(oldSplashPng); } catch (e) {}
+            if (existsSync(oldSplashImg)) try { unlinkSync(oldSplashImg); } catch (e) {}
 
-            // B. Delete conflicting "splash.png"
-            const oldSplash = join(folderPath, 'splash.png');
-            if (existsSync(oldSplash)) {
-                try { unlinkSync(oldSplash); } catch (e) {}
-            }
-
-            // C. Create XML
+            // B. Create XML (Solid Black)
             if (folder === 'drawable' || folder === 'drawable-port') {
                 try {
                     writeFileSync(join(folderPath, 'splash.xml'), splashXmlContent);
-                    console.log(`   ✅ Created Native XML Splash in: ${folder}`);
+                    console.log(`   ✅ Created Pure Black XML Splash in: ${folder}`);
                 } catch (e) {
                     console.error(`   ❌ Failed to write XML in ${folder}`, e);
                 }
@@ -107,10 +88,10 @@ try {
          rmSync(anyDpiFolder, { recursive: true, force: true });
     }
 
-    console.log('✅ Resources updated successfully.');
+    console.log('✅ Splash Screen is now SOLID BLACK (No Logo).');
 
 } catch (e) {
     console.error('❌ Error processing resource directories:', e);
 }
 
-console.log('🚀 ICON CONFIG COMPLETE.\n');
+console.log('🚀 CONFIG COMPLETE.\n');

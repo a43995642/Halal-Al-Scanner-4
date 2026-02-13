@@ -5,8 +5,8 @@
   "description": "A React application that uses Gemini AI to scan food ingredients and determine if they are Halal, Haram, or Doubtful.",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#059669",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait",
   "icons": [
     {

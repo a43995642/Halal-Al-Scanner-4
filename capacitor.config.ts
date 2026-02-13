@@ -17,12 +17,14 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 1500,
       launchAutoHide: true,
-      backgroundColor: "#020617",
+      backgroundColor: "#000000", // لون أسود بالكامل
       androidSplashResourceName: "splash",
       androidScaleType: "CENTER_CROP", 
-      showSpinner: false,
+      showSpinner: false, // إخفاء مؤشر التحميل
+      splashFullScreen: true,
+      splashImmersive: true
     },
     GoogleAuth: {
       scopes: ["profile", "email"],
