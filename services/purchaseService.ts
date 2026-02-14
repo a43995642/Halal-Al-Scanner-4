@@ -3,19 +3,8 @@ import { Purchases, PurchasesOfferings, LOG_LEVEL } from '@revenuecat/purchases-
 import { Capacitor } from '@capacitor/core';
 import { secureStorage } from '../utils/secureStorage';
 
-// ⚠️ هام جداً للنشر:
-// استبدل هذا المفتاح بمفتاح RevenueCat الحقيقي الخاص بـ Android من لوحة التحكم
-// Get this from: https://app.revenuecat.com/ -> Project Settings -> API Keys
-const REVENUECAT_API_KEY = 'goog_YOUR_REVENUECAT_API_KEY_HERE';
-
-export interface SubscriptionPackage {
-  identifier: string;
-  product: {
-    priceString: string;
-    title: string;
-    description: string;
-  };
-}
+// استرداد المفتاح من متغيرات البيئة
+const REVENUECAT_API_KEY = import.meta.env.VITE_REVENUECAT_PUBLIC_KEY || 'goog_PLACEHOLDER';
 
 export const PurchaseService = {
   
@@ -25,10 +14,11 @@ export const PurchaseService = {
         return;
     }
 
-    // Safety check for production
-    if (REVENUECAT_API_KEY.includes('YOUR_REVENUECAT_API_KEY_HERE')) {
-        console.error("🚨 CRITICAL: RevenueCat API Key is not set! Subscriptions will fail.");
-        console.error("Please update services/purchaseService.ts with your actual key.");
+    // التحقق من صحة المفتاح قبل البدء
+    if (!REVENUECAT_API_KEY || REVENUECAT_API_KEY.includes('PLACEHOLDER')) {
+        console.error("🚨 CRITICAL: VITE_REVENUECAT_PUBLIC_KEY is not set in .env file!");
+        console.error("Subscriptions will NOT work. Please add your RevenueCat Public API Key.");
+        return;
     }
 
     try {
@@ -36,10 +26,10 @@ export const PurchaseService = {
         await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
       }
       
-      // In production, you might want to reduce log level to WARN or ERROR
+      // في الإنتاج، نقلل مستوى السجلات لتجنب تسريب المعلومات
       await Purchases.setLogLevel({ level: LOG_LEVEL.ERROR });
       
-      // Check initial status
+      // التحقق من حالة الاشتراك عند البدء
       await this.checkSubscriptionStatus();
       
     } catch (error) {
@@ -62,7 +52,7 @@ export const PurchaseService = {
     try {
       const { customerInfo } = await Purchases.purchasePackage({ aPackage: packageIdentifier });
       
-      // Check for the entitlement identifier you created in RevenueCat dashboard (e.g. 'pro_access')
+      // تأكد من أن المعرف 'pro_access' يطابق ما قمت بإنشائه في لوحة تحكم RevenueCat
       if (customerInfo.entitlements.active['pro_access']) {
          secureStorage.setItem('isPremium', true);
          return true;
@@ -83,7 +73,7 @@ export const PurchaseService = {
          secureStorage.setItem('isPremium', true);
          return true;
       } else {
-         // If restored but no active entitlement, user might be expired
+         // إذا انتهى الاشتراك
          secureStorage.setItem('isPremium', false);
       }
     } catch (error) {
@@ -100,7 +90,7 @@ export const PurchaseService = {
         const { customerInfo } = await Purchases.getCustomerInfo();
         const isPro = typeof customerInfo.entitlements.active['pro_access'] !== "undefined";
         
-        // Update Local Storage Securely
+        // تحديث التخزين المحلي الآمن
         secureStorage.setItem('isPremium', isPro);
         
         return isPro;
@@ -109,7 +99,7 @@ export const PurchaseService = {
      }
   },
   
-  // Identify user in RevenueCat (useful if they log in with Supabase)
+  // ربط المستخدم في RevenueCat (مفيد إذا سجل الدخول عبر Supabase)
   async logIn(userId: string) {
      if (Capacitor.isNativePlatform()) {
          await Purchases.logIn({ appUserID: userId });
