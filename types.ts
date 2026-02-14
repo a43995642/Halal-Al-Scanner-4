@@ -220,11 +220,4 @@ export interface TranslationDictionary {
   authSuccessTitle: string;
   authSuccessDesc: string;
   startScanning: string;
-  // Custom API Key
-  customKeyTitle: string;
-  customKeyDesc: string;
-  customKeyPlaceholder: string;
-  customKeySaved: string;
-  customKeyRemoved: string;
-  saveKey: string;
 }

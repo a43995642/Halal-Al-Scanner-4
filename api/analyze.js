@@ -31,7 +31,7 @@ export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   response.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-user-id, x-language, x-custom-api-key, x-app-version'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-user-id, x-language, x-app-version'
   );
 
   if (request.method === 'OPTIONS') {
@@ -62,11 +62,8 @@ export default async function handler(request, response) {
     const userId = request.headers['x-user-id'];
     const language = request.headers['x-language'] || 'ar'; // Default to Arabic
     
-    // Check for Custom API Key provided by user
-    const customApiKey = request.headers['x-custom-api-key'];
-
-    // Prioritize custom key, fallback to env key
-    const apiKey = customApiKey || process.env.API_KEY;
+    // Commercial Mode: Use Developer Key Only
+    const apiKey = process.env.API_KEY;
 
     if (!apiKey) {
       console.error("Server missing API Key");
@@ -76,9 +73,9 @@ export default async function handler(request, response) {
       });
     }
 
-    // Check User Stats only if NOT using a custom key
-    // If user brings their own key, we skip quota checks
-    if (!customApiKey && userId && userId !== 'anonymous' && supabase) {
+    // Check User Stats
+    // Always check quota since custom keys are no longer allowed
+    if (userId && userId !== 'anonymous' && supabase) {
         try {
             const { data: userStats, error: dbError } = await supabase
               .from('user_stats')
@@ -237,8 +234,8 @@ export default async function handler(request, response) {
         };
     }
 
-    // Increment scan count ONLY if using default key
-    if (!customApiKey && userId && userId !== 'anonymous' && supabase) {
+    // Increment scan count 
+    if (userId && userId !== 'anonymous' && supabase) {
        try {
            await supabase.rpc('increment_scan_count', { row_id: userId });
        } catch (statsErr) {

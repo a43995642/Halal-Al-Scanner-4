@@ -2,7 +2,7 @@
 import { HalalStatus, ScanResult, Language } from "../types";
 import { Capacitor } from '@capacitor/core';
 import { checkLocalHaram } from "./haramKeywords";
-import { secureStorage } from "../utils/secureStorage";
+// Removed secureStorage as we no longer check for custom keys
 
 // ⚠️ الرابط المباشر للخادم (للأندرويد)
 const VERCEL_PROJECT_URL = 'https://halal-al-scanner-4.vercel.app'; 
@@ -102,9 +102,6 @@ export const analyzeImage = async (
       };
   }
 
-  // Check for Custom API Key
-  const customApiKey = secureStorage.getItem<string>('customApiKey', '');
-
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
         let targetWidth = 1500;
@@ -130,17 +127,12 @@ export const analyzeImage = async (
         const baseUrl = getBaseUrl();
         const endpoint = `${baseUrl}/api/analyze`;
         
-        // Prepare headers (include Custom Key if exists)
         const headers: any = {
             'Content-Type': 'application/json',
             'x-user-id': userId || 'anonymous',
             'x-language': language,
             'x-app-version': APP_VERSION // CRITICAL for server check
         };
-
-        if (customApiKey) {
-            headers['x-custom-api-key'] = customApiKey;
-        }
         
         // Use custom fetch with timeout
         const response = await fetchWithTimeout(endpoint, {
@@ -226,24 +218,16 @@ export const analyzeText = async (
     };
   }
 
-  // Check for Custom API Key
-  const customApiKey = secureStorage.getItem<string>('customApiKey', '');
-
   try {
     const baseUrl = getBaseUrl();
     const endpoint = `${baseUrl}/api/analyze`;
 
-    // Prepare headers (include Custom Key if exists)
     const headers: any = {
         'Content-Type': 'application/json',
         'x-user-id': userId || 'anonymous',
         'x-language': language,
         'x-app-version': APP_VERSION // CRITICAL
     };
-
-    if (customApiKey) {
-        headers['x-custom-api-key'] = customApiKey;
-    }
 
     const response = await fetchWithTimeout(endpoint, {
         method: 'POST',
