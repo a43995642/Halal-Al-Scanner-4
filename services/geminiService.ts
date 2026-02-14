@@ -1,3 +1,4 @@
+
 import { HalalStatus, ScanResult, Language } from "../types";
 import { Capacitor } from '@capacitor/core';
 import { checkLocalHaram } from "./haramKeywords";
@@ -87,11 +88,22 @@ export const analyzeImage = async (
   
   const MAX_RETRIES = 2;
 
+  // Pre-check connectivity
+  if (!navigator.onLine) {
+      return {
+          status: HalalStatus.NON_FOOD,
+          reason: language === 'ar' ? "لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة." : "No internet connection. Please check your network.",
+          ingredientsDetected: [],
+          confidence: 0
+      };
+  }
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
         let targetWidth = 1500;
         let targetQuality = 0.85;
 
+        // Progressive downscaling on retry
         if (attempt === 1) {
             targetWidth = 1024;
             targetQuality = 0.7;
@@ -123,7 +135,7 @@ export const analyzeImage = async (
                 images: processedImages
             }),
             signal: signal,
-            timeout: attempt === 0 ? 20000 : 35000 // Increase timeout slightly on retries
+            timeout: attempt === 0 ? 25000 : 35000 // Increase timeout slightly on retries
         });
 
         if (!response.ok) {
@@ -148,12 +160,15 @@ export const analyzeImage = async (
              const isAr = language === 'ar';
              let userMessage = isAr ? "حدث خطأ غير متوقع." : "Unexpected error.";
             
+             // Specific Network Errors
              if (error.message.includes("NO_INTERNET") || !navigator.onLine) {
                  userMessage = isAr ? "لا يوجد اتصال بالإنترنت." : "No internet connection.";
-             } else if (error.name === 'AbortError' || error.message.includes('aborted')) { // Handle timeout abort
-                 userMessage = isAr ? "استغرق الخادم وقتاً طويلاً. حاول مرة أخرى." : "Server timed out. Try again.";
-             } else {
-                 userMessage = isAr ? "تعذر الاتصال بالخادم. تحقق من الإنترنت." : "Connection failed.";
+             } else if (error.name === 'AbortError' || error.message.includes('aborted')) { 
+                 userMessage = isAr ? "استغرق الخادم وقتاً طويلاً. قد تكون الصورة كبيرة جداً أو الاتصال بطيء." : "Server timed out. Image might be too large or connection slow.";
+             } else if (error.message.includes("HTTP Error")) {
+                 userMessage = isAr ? "واجه الخادم مشكلة مؤقتة. حاول مرة أخرى." : "Temporary server issue. Please try again.";
+             } else if (error.message.includes("Failed to fetch")) {
+                 userMessage = isAr ? "فشل الاتصال بالخادم. تأكد من أنك متصل بالإنترنت." : "Failed to connect to server. Check internet.";
              }
 
              return {
