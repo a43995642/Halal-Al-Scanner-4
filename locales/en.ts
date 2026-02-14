@@ -172,6 +172,11 @@ const en: TranslationDictionary = {
   confirm: "Confirm",
   reset: "Reset",
   editImage: "Edit Image",
+  // Ingredient Language Settings
+  ingredientLangTitle: "Ingredient Language",
+  ingredientLangApp: "App Language (Translated)",
+  ingredientLangOriginal: "Product Language (Original)",
+  ingredientLangDesc: "Choose how to display ingredient names.",
   // Account Deletion
   deleteAccount: "Delete Account",
   deleteAccountDesc: "Permanently delete your account and data.",

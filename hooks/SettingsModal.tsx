@@ -45,6 +45,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [user, setUser] = useState<any | null>(null); // Changed User to any
   const [isSigningOut, setIsSigningOut] = useState(false); // New state for loading
+  const [ingredientLang, setIngredientLang] = useState<'app' | 'original'>(() => {
+      const saved = localStorage.getItem('ingredientLangPreference');
+      return (saved === 'original') ? 'original' : 'app';
+  });
 
   useEffect(() => {
      // 1. Get initial user
@@ -139,6 +143,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           // Fallback for PWA/Browser (Usually won't work due to browser security, but good to have)
           alert("Please close the tab to exit.");
       }
+  };
+
+  const changeIngredientLang = (val: 'app' | 'original') => {
+      setIngredientLang(val);
+      localStorage.setItem('ingredientLangPreference', val);
   };
 
   return (
@@ -237,6 +246,36 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                           className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${language === 'en' ? 'bg-[#2c2c2c] text-white shadow-sm border border-white/10' : 'text-gray-500 hover:text-gray-300'}`}
                         >
                           English
+                        </button>
+                    </div>
+                </div>
+
+                {/* Ingredient Language (NEW) */}
+                <div className="flex flex-col p-4 border-b border-white/5">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="w-9 h-9 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                            </svg>
+                        </div>
+                        <div>
+                           <p className="font-medium text-white text-sm">{t.ingredientLangTitle}</p>
+                           <p className="text-xs text-gray-400">{t.ingredientLangDesc}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                        <button 
+                          onClick={() => changeIngredientLang('app')}
+                          className={`px-3 py-2 text-xs font-bold rounded-xl border transition ${ingredientLang === 'app' ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300' : 'bg-black/40 border-white/5 text-gray-500 hover:bg-white/5'}`}
+                        >
+                          {t.ingredientLangApp}
+                        </button>
+                        <button 
+                          onClick={() => changeIngredientLang('original')}
+                          className={`px-3 py-2 text-xs font-bold rounded-xl border transition ${ingredientLang === 'original' ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300' : 'bg-black/40 border-white/5 text-gray-500 hover:bg-white/5'}`}
+                        >
+                          {t.ingredientLangOriginal}
                         </button>
                     </div>
                 </div>

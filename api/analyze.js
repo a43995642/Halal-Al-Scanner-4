@@ -31,7 +31,7 @@ export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   response.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-user-id, x-language, x-app-version'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-user-id, x-language, x-app-version, x-ingredient-language'
   );
 
   if (request.method === 'OPTIONS') {
@@ -61,6 +61,7 @@ export default async function handler(request, response) {
     const { images, text } = request.body;
     const userId = request.headers['x-user-id'];
     const language = request.headers['x-language'] || 'ar'; // Default to Arabic
+    const ingredientMode = request.headers['x-ingredient-language'] || 'app'; // 'app' (translated) or 'original'
     
     // Commercial Mode: Use Developer Key Only
     const apiKey = process.env.API_KEY;
@@ -101,6 +102,19 @@ export default async function handler(request, response) {
 
     const ai = new GoogleGenAI({ apiKey: apiKey });
 
+    // Determine Translation Instruction based on preference
+    let translationInstruction = "";
+    if (ingredientMode === 'original') {
+        translationInstruction = "EXTRACT INGREDIENT NAMES EXACTLY AS THEY APPEAR ON THE PACKAGE. DO NOT TRANSLATE THEM. If multiple languages are present, prefer English, but keep raw spelling.";
+    } else {
+        // Translate to App Language
+        if (language === 'ar') {
+            translationInstruction = "TRANSLATE ALL INGREDIENT NAMES TO ARABIC.";
+        } else {
+            translationInstruction = "TRANSLATE ALL INGREDIENT NAMES TO ENGLISH.";
+        }
+    }
+
     // Enhanced System Instructions for Robust Error Handling
     let systemInstruction = "";
     
@@ -124,14 +138,15 @@ export default async function handler(request, response) {
 
         **ONLY IF IMAGE IS CLEAR:**
         1. Extract ALL ingredient text.
-        2. Analyze against Halal standards.
-        3. Rules:
+        2. ${translationInstruction}
+        3. Analyze against Halal standards.
+        4. Rules:
            - HARAM: Pork, Lard, Alcohol/Ethanol, Carmine/E120, Shellac, L-Cysteine (human/hair).
            - HALAL: Plant-based, Water, Salt, Fish, Vegetables.
            - DOUBTFUL: Gelatin (unspecified), E471, Whey/Rennet (unspecified), Glycerin (unspecified).
         
         Output: JSON ONLY. No Markdown.
-        "ingredientsDetected": List ingredients VERBATIM.
+        "ingredientsDetected": List ingredients based on the translation instruction.
         `;
     } else {
         systemInstruction = `
@@ -153,8 +168,9 @@ export default async function handler(request, response) {
 
         **فقط إذا كانت الصورة واضحة:**
         1. استخرج جميع المكونات.
-        2. حللها حسب معايير الحلال.
-        3. القواعد:
+        2. ${translationInstruction}
+        3. حللها حسب معايير الحلال.
+        4. القواعد:
            - حرام: خنزير، دهن خنزير، كحول، كارمين (E120)، شيلات، سيستين (شعر).
            - حلال: نباتي، ماء، سمك.
            - مشتبه: جيلاتين (غير محدد)، E471، مصل لبن/منفحة (غير نباتي).

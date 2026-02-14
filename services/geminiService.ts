@@ -102,6 +102,9 @@ export const analyzeImage = async (
       };
   }
 
+  // Get Ingredient Language Preference
+  const ingredientLang = localStorage.getItem('ingredientLangPreference') || 'app';
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
         let targetWidth = 1500;
@@ -131,7 +134,8 @@ export const analyzeImage = async (
             'Content-Type': 'application/json',
             'x-user-id': userId || 'anonymous',
             'x-language': language,
-            'x-app-version': APP_VERSION // CRITICAL for server check
+            'x-app-version': APP_VERSION, // CRITICAL for server check
+            'x-ingredient-language': ingredientLang // 'app' or 'original'
         };
         
         // Use custom fetch with timeout
@@ -218,6 +222,9 @@ export const analyzeText = async (
     };
   }
 
+  // Get Ingredient Language Preference
+  const ingredientLang = localStorage.getItem('ingredientLangPreference') || 'app';
+
   try {
     const baseUrl = getBaseUrl();
     const endpoint = `${baseUrl}/api/analyze`;
@@ -226,7 +233,8 @@ export const analyzeText = async (
         'Content-Type': 'application/json',
         'x-user-id': userId || 'anonymous',
         'x-language': language,
-        'x-app-version': APP_VERSION // CRITICAL
+        'x-app-version': APP_VERSION, // CRITICAL
+        'x-ingredient-language': ingredientLang
     };
 
     const response = await fetchWithTimeout(endpoint, {

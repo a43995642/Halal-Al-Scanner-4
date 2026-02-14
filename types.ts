@@ -175,6 +175,11 @@ export interface TranslationDictionary {
   confirm: string;
   reset: string;
   editImage: string;
+  // Ingredient Language Settings
+  ingredientLangTitle: string;
+  ingredientLangApp: string;
+  ingredientLangOriginal: string;
+  ingredientLangDesc: string;
   // Account Deletion
   deleteAccount: string;
   deleteAccountDesc: string;
