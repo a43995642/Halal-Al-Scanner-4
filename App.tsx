@@ -104,7 +104,7 @@ function App() {
     captureImage, 
     toggleTorch, 
     isTorchOn, 
-    hasTorch,
+    hasTorch, 
     error: cameraError,
     openNativeCamera
   } = useCamera();
@@ -498,6 +498,7 @@ function App() {
          )}
 
          {/* Actual Video Element - Hidden until playing to prevent 'Play' icon */}
+         {/* Added brightness-110 to boost visibility */}
          <video 
             ref={videoRef} 
             autoPlay 
@@ -505,7 +506,7 @@ function App() {
             muted 
             disablePictureInPicture
             onPlaying={() => setIsVideoReady(true)}
-            className={`w-full h-full object-cover transition-opacity duration-500 ${!result && !isLoading && !cameraError && isVideoReady ? 'opacity-100' : 'opacity-0'}`} 
+            className={`w-full h-full object-cover transition-opacity duration-500 brightness-110 ${!result && !isLoading && !cameraError && isVideoReady ? 'opacity-100' : 'opacity-0'}`} 
          />
          
          {!result && !isLoading && !cameraError && (
@@ -526,7 +527,8 @@ function App() {
               className="absolute inset-0 w-full h-full object-cover z-0 bg-black"
             />
          )}
-         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none z-10"></div>
+         {/* Reduced opacity of overlay gradient to improve perceived brightness */}
+         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none z-10"></div>
       </div>
 
       {/* --- LAYER 2: FLOATING HEADER --- */}
