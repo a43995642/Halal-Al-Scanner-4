@@ -97,7 +97,11 @@ export default async function handler(request, response) {
            - Doubtful: Gelatin (unknown source), E471 (unspecified source), Whey/Rennet (unknown source), Glycerin (unknown source).
         6. If non-food, return status 'NON_FOOD'.
         7. Results must be in English.
-        8. CRITICAL: In the "ingredientsDetected" array, you MUST list *ALL* ingredients you managed to read from the image/text, even common/halal ones (like Sugar, Water, Salt). This is to confirm to the user that the image was read correctly.
+        8. CRITICAL: In the "ingredientsDetected" array, you MUST list *ALL* ingredients found.
+           - STRICTLY FOLLOW the order of ingredients as they appear on the package.
+           - MAINTAIN the exact spelling and capitalization (literal transcription).
+           - DO NOT reorder, group, or summarize.
+           - Include even common ingredients (e.g., Sugar, Water, Salt) to confirm reading accuracy.
         `;
     } else {
         systemInstruction = `
@@ -113,7 +117,11 @@ export default async function handler(request, response) {
            - مشتبه به: جيلاتين مجهول المصدر، E471 مجهول، مصل اللبن (Whey) مجهول الإنفحة، المستحلبات إذا لم يذكر أنها نباتية.
         6. إذا لم يكن مكونات غذائية -> NON_FOOD.
         7. النتائج يجب أن تكون باللغة العربية.
-        8. هام جداً: في مصفوفة "ingredientsDetected"، يجب ذكر "جميع" المكونات التي استطعت قراءتها من الصورة أو النص، حتى المكونات الحلال والعادية (مثل سكر، ماء، ملح). هذا لتأكيد قراءة المكونات للمستخدم.
+        8. هام جداً: في مصفوفة "ingredientsDetected"، يجب ذكر "جميع" المكونات التي استطعت قراءتها.
+           - التزم تماماً بترتيب المكونات كما تظهر على العبوة.
+           - حافظ على الكتابة الحرفية (نفس الحروف والإملاء) كما في الصورة.
+           - لا تقم بإعادة الترتيب أو التجميع أو التلخيص.
+           - اذكر جميع المكونات حتى العادية (مثل سكر، ماء، ملح).
         `;
     }
 
