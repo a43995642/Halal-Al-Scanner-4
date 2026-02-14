@@ -515,7 +515,6 @@ function App() {
                    <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-emerald-500 rounded-tr-3xl shadow-sm"></div>
                    <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-emerald-500 rounded-bl-3xl shadow-sm"></div>
                    <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-emerald-500 rounded-br-3xl shadow-sm"></div>
-                   <div className="absolute top-1/2 left-1/2 w-4 h-4 -ml-2 -mt-2 border border-white/30 rounded-full"></div>
                </div>
             </div>
          )}
