@@ -215,7 +215,14 @@ const ar: TranslationDictionary = {
   // Auth Success Modal
   authSuccessTitle: "تم التسجيل بنجاح!",
   authSuccessDesc: "تم تفعيل حسابك بنجاح. يمكنك الآن استخدام التطبيق بحرية.",
-  startScanning: "بدء المسح الآن"
+  startScanning: "بدء المسح الآن",
+  // Custom API Key
+  customKeyTitle: "مفتاح API خاص (اختياري)",
+  customKeyDesc: "استخدم مفتاح Gemini الخاص بك لتجاوز الحدود اليومية.",
+  customKeyPlaceholder: "الصق مفتاح API الخاص بك هنا",
+  customKeySaved: "تم حفظ المفتاح بنجاح",
+  customKeyRemoved: "تمت إزالة المفتاح",
+  saveKey: "حفظ المفتاح"
 };
 
 export default ar;

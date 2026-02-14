@@ -91,6 +91,7 @@ function App() {
   const [isPremium, setIsPremium] = useState(false);
   const [scanCount, setScanCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [hasCustomKey, setHasCustomKey] = useState(false);
   
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   
@@ -139,6 +140,18 @@ function App() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isTorchOn, toggleTorch]);
   
+  // Check for custom key on load and whenever settings close
+  useEffect(() => {
+      const checkKey = () => {
+          const key = secureStorage.getItem('customApiKey', '');
+          setHasCustomKey(!!key);
+      };
+      checkKey();
+      if (!showSettings) {
+          checkKey();
+      }
+  }, [showSettings]);
+
   useEffect(() => {
     let backButtonListener: any;
     let urlListener: any;
@@ -285,7 +298,13 @@ function App() {
     if (cameraError) { openNativeCamera((src) => { const newImages = [...images, src]; setImages(newImages); }); return; }
     if (isCapturing) return;
     if (isLoading) return;
-    if (!isPremium && scanCount >= FREE_SCANS_LIMIT) { setShowSubscriptionModal(true); return; }
+    
+    // Check Limits - Bypass if Custom Key or Premium
+    if (!hasCustomKey && !isPremium && scanCount >= FREE_SCANS_LIMIT) { 
+        setShowSubscriptionModal(true); 
+        return; 
+    }
+    
     if (images.length >= MAX_IMAGES_PER_SCAN) { showToast(t.maxImages); return; }
     captureImage((src) => { const newImages = [...images, src]; setImages(newImages); vibrate(50); showToast(t.imgAdded); }, false);
   };
@@ -325,7 +344,7 @@ function App() {
           else playWarningSound();
 
           setResult(scanResult); 
-          if (userId) await fetchUserStats(userId); 
+          if (userId && !hasCustomKey) await fetchUserStats(userId); 
           
           optimizeImageForDisplay(images[0]).then(img => {
                const imgObj = new Image();
@@ -637,7 +656,7 @@ function App() {
                          </button>
                       ) : (
                          <label className={`w-12 h-12 rounded-full flex items-center justify-center transition border border-white/10 cursor-pointer active:scale-90 ${isFocusMode ? 'bg-black/40 backdrop-blur-md hover:bg-black/60' : 'bg-[#2c2c2c] hover:bg-[#3d3d3d]'}`}>
-                            <input type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" disabled={!isPremium && scanCount >= FREE_SCANS_LIMIT} />
+                            <input type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" disabled={!isPremium && !hasCustomKey && scanCount >= FREE_SCANS_LIMIT} />
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                          </label>
                       )}

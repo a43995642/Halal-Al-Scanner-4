@@ -216,7 +216,14 @@ const en: TranslationDictionary = {
   // Auth Success Modal
   authSuccessTitle: "Registration Successful!",
   authSuccessDesc: "Your account has been verified successfully. You can now use the app freely.",
-  startScanning: "Start Scanning"
+  startScanning: "Start Scanning",
+  // Custom API Key
+  customKeyTitle: "Custom API Key (Optional)",
+  customKeyDesc: "Use your own Gemini key to bypass daily limits.",
+  customKeyPlaceholder: "Paste your API Key here",
+  customKeySaved: "Key saved successfully",
+  customKeyRemoved: "Key removed",
+  saveKey: "Save Key"
 };
 
 export default en;

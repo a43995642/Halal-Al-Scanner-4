@@ -2,9 +2,13 @@
 import { HalalStatus, ScanResult, Language } from "../types";
 import { Capacitor } from '@capacitor/core';
 import { checkLocalHaram } from "./haramKeywords";
+import { secureStorage } from "../utils/secureStorage";
 
 // ⚠️ الرابط المباشر للخادم (للأندرويد)
 const VERCEL_PROJECT_URL = 'https://halal-al-scanner-4.vercel.app'; 
+
+// MUST MATCH PACKAGE.JSON VERSION
+const APP_VERSION = "2.2.0";
 
 const getBaseUrl = () => {
   if (Capacitor.isNativePlatform()) {
@@ -98,6 +102,9 @@ export const analyzeImage = async (
       };
   }
 
+  // Check for Custom API Key
+  const customApiKey = secureStorage.getItem<string>('customApiKey', '');
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
         let targetWidth = 1500;
@@ -123,14 +130,22 @@ export const analyzeImage = async (
         const baseUrl = getBaseUrl();
         const endpoint = `${baseUrl}/api/analyze`;
         
+        // Prepare headers (include Custom Key if exists)
+        const headers: any = {
+            'Content-Type': 'application/json',
+            'x-user-id': userId || 'anonymous',
+            'x-language': language,
+            'x-app-version': APP_VERSION // CRITICAL for server check
+        };
+
+        if (customApiKey) {
+            headers['x-custom-api-key'] = customApiKey;
+        }
+        
         // Use custom fetch with timeout
         const response = await fetchWithTimeout(endpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-user-id': userId || 'anonymous',
-                'x-language': language
-            },
+            headers: headers,
             body: JSON.stringify({
                 images: processedImages
             }),
@@ -143,6 +158,9 @@ export const analyzeImage = async (
                  const errData = await response.json().catch(() => ({}));
                  if (errData.error === 'LIMIT_REACHED') throw new Error("LIMIT_REACHED");
             }
+            if (response.status === 426) {
+                 throw new Error("UPDATE_REQUIRED");
+            }
             if (response.status >= 500) throw new Error(`Server Error ${response.status}`);
             throw new Error(`HTTP Error ${response.status}`);
         }
@@ -153,6 +171,14 @@ export const analyzeImage = async (
     } catch (error: any) {
         if (error.name === 'AbortError') throw error; // User cancelled
         if (error.message === "LIMIT_REACHED") throw error;
+        if (error.message === "UPDATE_REQUIRED") {
+             return {
+               status: HalalStatus.NON_FOOD,
+               reason: language === 'ar' ? "النسخة قديمة. يرجى تحديث التطبيق ليعمل." : "App version deprecated. Please update.",
+               ingredientsDetected: [],
+               confidence: 0
+             };
+        }
 
         console.warn(`Attempt ${attempt} failed:`, error);
 
@@ -200,23 +226,37 @@ export const analyzeText = async (
     };
   }
 
+  // Check for Custom API Key
+  const customApiKey = secureStorage.getItem<string>('customApiKey', '');
+
   try {
     const baseUrl = getBaseUrl();
     const endpoint = `${baseUrl}/api/analyze`;
 
+    // Prepare headers (include Custom Key if exists)
+    const headers: any = {
+        'Content-Type': 'application/json',
+        'x-user-id': userId || 'anonymous',
+        'x-language': language,
+        'x-app-version': APP_VERSION // CRITICAL
+    };
+
+    if (customApiKey) {
+        headers['x-custom-api-key'] = customApiKey;
+    }
+
     const response = await fetchWithTimeout(endpoint, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': userId || 'anonymous',
-            'x-language': language
-        },
+        headers: headers,
         body: JSON.stringify({ text: text }),
         signal,
         timeout: 20000
     });
 
-    if (!response.ok) throw new Error(`Server Error: ${response.status}`);
+    if (!response.ok) {
+        if (response.status === 426) throw new Error("UPDATE_REQUIRED");
+        throw new Error(`Server Error: ${response.status}`);
+    }
     const result = await response.json();
     return result as ScanResult;
 
@@ -226,7 +266,9 @@ export const analyzeText = async (
     const isAr = language === 'ar';
     let userMessage = isAr ? "تأكد من اتصال الإنترنت." : "Check internet connection.";
     
-    if (error.name === 'AbortError' || error.message.includes('aborted')) {
+    if (error.message === "UPDATE_REQUIRED") {
+        userMessage = isAr ? "النسخة قديمة. يرجى التحديث." : "Update required.";
+    } else if (error.name === 'AbortError' || error.message.includes('aborted')) {
         userMessage = isAr ? "انتهت مهلة الاتصال." : "Request timed out.";
     }
 

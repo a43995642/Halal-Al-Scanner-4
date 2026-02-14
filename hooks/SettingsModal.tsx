@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
@@ -6,6 +7,7 @@ import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import packageJson from '../package.json'; // Fixed import path
+import { secureStorage } from '../utils/secureStorage';
 
 // Reusing URL logic from geminiService to ensure consistency
 const VERCEL_PROJECT_URL = 'https://halal-al-scanner-4.vercel.app'; 
@@ -43,6 +45,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [user, setUser] = useState<any | null>(null); // Changed User to any
   const [isSigningOut, setIsSigningOut] = useState(false); // New state for loading
+  
+  // Custom API Key State
+  const [customKey, setCustomKey] = useState('');
+  const [savedKey, setSavedKey] = useState<string | null>(null);
 
   useEffect(() => {
      // 1. Get initial user
@@ -56,6 +62,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
        setUser(session?.user || null);
      });
+     
+     // 3. Load Saved Key
+     const loadedKey = secureStorage.getItem<string>('customApiKey', '');
+     if (loadedKey) {
+         setSavedKey(loadedKey);
+         setCustomKey(loadedKey);
+     }
 
      return () => {
        subscription.unsubscribe();
@@ -67,6 +80,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       onClearHistory();
       alert(t.clearHistoryConfirm);
     }
+  };
+
+  const handleSaveKey = () => {
+      if (!customKey.trim()) {
+          secureStorage.removeItem('customApiKey');
+          setSavedKey(null);
+          alert(t.customKeyRemoved);
+      } else {
+          secureStorage.setItem('customApiKey', customKey.trim());
+          setSavedKey(customKey.trim());
+          alert(t.customKeySaved);
+      }
   };
 
   const handleSignOut = async () => {
@@ -141,7 +166,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
-      <div className="bg-[#1e1e1e] rounded-t-3xl sm:rounded-3xl w-full max-w-md h-[85vh] sm:h-auto sm:max-h-[80vh] flex flex-col shadow-2xl border border-white/10 animate-slide-up">
+      <div className="bg-[#1e1e1e] rounded-t-3xl sm:rounded-3xl w-full max-w-md h-[85vh] sm:h-auto sm:max-h-[85vh] flex flex-col shadow-2xl border border-white/10 animate-slide-up">
         
         {/* Header */}
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5 rounded-t-3xl">
@@ -206,6 +231,41 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         {t.signIn}
                      </button>
                  )}
+             </div>
+          </div>
+
+          {/* CUSTOM API KEY (BYOK) - SOLUTION FOR POWER USERS */}
+          <div>
+             <h3 className="text-xs font-bold text-gray-500 mb-3 px-2 uppercase tracking-widest">{t.customKeyTitle}</h3>
+             <div className="bg-black/20 rounded-2xl overflow-hidden border border-white/5 p-4">
+                 <div className="flex items-start gap-3 mb-3">
+                     <div className={`w-9 h-9 rounded-full flex items-center justify-center border shrink-0 ${savedKey ? 'bg-purple-500/20 text-purple-400 border-purple-500/10' : 'bg-gray-700/50 text-gray-400 border-white/5'}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                        </svg>
+                     </div>
+                     <div>
+                        <p className="font-bold text-white text-sm">{t.customKeyTitle}</p>
+                        <p className="text-xs text-gray-400 leading-relaxed">{t.customKeyDesc}</p>
+                        {savedKey && <p className="text-[10px] text-purple-400 mt-1 font-bold">●●●●●●●●● (Active)</p>}
+                     </div>
+                 </div>
+                 
+                 <div className="flex gap-2">
+                     <input 
+                       type="text" 
+                       value={customKey}
+                       onChange={(e) => setCustomKey(e.target.value)}
+                       className="flex-grow bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:border-purple-500/50 outline-none"
+                       placeholder={t.customKeyPlaceholder}
+                     />
+                     <button 
+                       onClick={handleSaveKey}
+                       className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-xs font-bold transition"
+                     >
+                       {savedKey ? (customKey ? t.saveKey : 'Remove') : t.saveKey}
+                     </button>
+                 </div>
              </div>
           </div>
 
