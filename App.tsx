@@ -305,6 +305,24 @@ function App() {
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
   const saveToHistory = (scanResult: ScanResult, thumbnail?: string) => { const newItem: ScanHistoryItem = { id: Date.now().toString(), date: Date.now(), result: scanResult, thumbnail }; const updatedHistory = [newItem, ...history].slice(0, 30); setHistory(updatedHistory); localStorage.setItem('halalScannerHistory', JSON.stringify(updatedHistory)); };
   
+  // --- HANDLE SUBSCRIPTION TRIGGER ---
+  const triggerSubscription = async () => {
+      // 1. Try Native Paywall first (Android/iOS)
+      if (Capacitor.isNativePlatform()) {
+          const presented = await PurchaseService.presentPaywall();
+          // If presentPaywall returns false/error or user cancelled, 
+          // we MIGHT fall back to the modal if you want, but usually Paywall handles everything.
+          // Since presentPaywall handles the UI, we don't need to do anything else unless it fails badly.
+          if (!presented) {
+              // Only if paywall failed to present (e.g. no internet/config), show fallback modal
+              setShowSubscriptionModal(true);
+          }
+      } else {
+          // 2. Web Mode: Show Custom Modal
+          setShowSubscriptionModal(true);
+      }
+  };
+
   const handleCaptureClick = () => {
     if (result) { resetApp(); return; }
     if (cameraError) { openNativeCamera((src) => { const newImages = [...images, src]; setImages(newImages); }); return; }
@@ -313,7 +331,7 @@ function App() {
     
     // Check Limits - Bypass if Custom Key or Premium
     if (!hasCustomKey && !isPremium && scanCount >= FREE_SCANS_LIMIT) { 
-        setShowSubscriptionModal(true); 
+        triggerSubscription();
         return; 
     }
     
@@ -445,8 +463,6 @@ function App() {
   };
 
   const handleSubscribe = async () => { 
-      // The actual purchase logic is handled inside SubscriptionModal. 
-      // This is called when closing or updating. 
       const isPro = await PurchaseService.checkSubscriptionStatus(); 
       setIsPremium(isPro); 
   };
@@ -483,7 +499,7 @@ function App() {
             onClose={() => setShowSettings(false)} 
             onClearHistory={() => setHistory([])} 
             isPremium={!!isPremium} 
-            onManageSubscription={() => { setShowSettings(false); setShowSubscriptionModal(true); }}
+            onManageSubscription={() => { setShowSettings(false); triggerSubscription(); }}
             onOpenAuth={() => { setShowAuthModal(true); }}
             onOpenPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }}
             onOpenTerms={() => { setShowSettings(false); setShowTerms(true); }}
@@ -493,6 +509,9 @@ function App() {
 
       {toastMessage && <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gray-900/90 text-white px-6 py-3 rounded-full shadow-xl z-[80] animate-fade-in text-sm font-medium backdrop-blur-sm border border-white/10">{toastMessage}</div>}
 
+      {/* ... Rest of the component code (no changes) ... */}
+      
+      {/* ... Keeping existing layout code ... */}
       {showAuthSuccess && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in p-4">
             <div className="bg-[#1e1e1e] w-full max-w-sm p-8 rounded-3xl border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.15)] text-center animate-slide-up relative overflow-hidden">
@@ -533,8 +552,7 @@ function App() {
             </div>
          )}
 
-         {/* Actual Video Element - Hidden until playing to prevent 'Play' icon */}
-         {/* Added brightness-110 to boost visibility */}
+         {/* Actual Video Element */}
          <video 
             ref={videoRef} 
             autoPlay 
@@ -563,7 +581,6 @@ function App() {
               className="absolute inset-0 w-full h-full object-cover z-0 bg-black"
             />
          )}
-         {/* Reduced opacity of overlay gradient to improve perceived brightness */}
          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none z-10"></div>
       </div>
 

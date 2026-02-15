@@ -1,9 +1,9 @@
 
-import { Purchases, PurchasesOfferings, LOG_LEVEL, CustomerInfo, Package } from '@revenuecat/purchases-capacitor';
+import { Purchases, PurchasesOfferings, LOG_LEVEL, CustomerInfo, Package, PURCHASE_TYPE } from '@revenuecat/purchases-capacitor';
 import { Capacitor } from '@capacitor/core';
 import { secureStorage } from '../utils/secureStorage';
 
-// معرف الصلاحية في RevenueCat (يجب أن يطابق ما في لوحة التحكم)
+// معرف الصلاحية في RevenueCat
 const ENTITLEMENT_ID = 'pro_access';
 
 // استرداد المفتاح من متغيرات البيئة
@@ -44,7 +44,47 @@ export const PurchaseService = {
     }
   },
 
-  // جلب العروض المتاحة (Monthly, Yearly, etc.)
+  // عرض Paywall الجاهز (Native UI)
+  async presentPaywall(): Promise<boolean> {
+    if (!Capacitor.isNativePlatform()) return false;
+    try {
+        const paywallResult = await Purchases.presentPaywall({
+            displayCloseButton: true
+        });
+        
+        // التحقق مما إذا قام المستخدم بالشراء
+        if (paywallResult === "NOT_PRESENTED") {
+             // Paywall didn't show (maybe network error or no config)
+             return false;
+        }
+        
+        // التحقق من الحالة بعد إغلاق الـ Paywall
+        return await this.checkSubscriptionStatus();
+    } catch (e) {
+        console.error("Error presenting paywall:", e);
+        return false;
+    }
+  },
+
+  // عرض Customer Center (إدارة الاشتراكات)
+  async presentCustomerCenter() {
+      if (!Capacitor.isNativePlatform()) return;
+      try {
+          // محاولة عرض مركز العملاء الأصلي إذا كان مدعوماً
+          await Purchases.presentCustomerCenter();
+      } catch (e) {
+          console.warn("Customer Center not supported or configured, falling back to manage subscriptions.", e);
+          // Fallback: فتح صفحة إدارة الاشتراكات في المتجر
+          try {
+             // @ts-ignore - some versions use different method names
+             await Purchases.manageSubscriptions(); 
+          } catch (err) {
+             console.error("Failed to open subscription management", err);
+          }
+      }
+  },
+
+  // جلب العروض المتاحة (للاستخدام اليدوي في الويب أو Fallback)
   async getOfferings(): Promise<PurchasesOfferings | null> {
      if (!Capacitor.isNativePlatform()) return null;
      try {
@@ -60,7 +100,7 @@ export const PurchaseService = {
      }
   },
 
-  // تنفيذ عملية الشراء
+  // تنفيذ عملية الشراء (حزمة محددة)
   async purchasePackage(pkg: Package): Promise<boolean> {
     try {
       const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });

@@ -27,12 +27,16 @@ if (existsSync(manifestPath)) {
   const permissions = [
     '<uses-permission android:name="android.permission.INTERNET" />',
     '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />',
-    '<uses-permission android:name="android.permission.CAMERA" />'
+    '<uses-permission android:name="android.permission.CAMERA" />',
+    '<uses-permission android:name="com.android.vending.BILLING" />'
   ];
 
   permissions.forEach(perm => {
     if (!content.includes(perm)) {
-       const tagName = perm.match(/android:name="([^"]+)"/)[1];
+       // Extract just the name for logging
+       const match = perm.match(/android:name="([^"]+)"/);
+       const tagName = match ? match[1] : "permission";
+       
        content = content.replace('<application', `${perm}\n    <application`);
        console.log(`✅ Injected permission: ${tagName}`);
        hasChanges = true;

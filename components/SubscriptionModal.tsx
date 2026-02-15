@@ -11,8 +11,7 @@ interface SubscriptionModalProps {
 }
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscribe, onClose, isLimitReached: _isLimitReached }) => {
-  // Change default to 'monthly' since it's the only option now
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('monthly');
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | 'lifetime'>('monthly');
   const [offerings, setOfferings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isProductsLoaded, setIsProductsLoaded] = useState(false);
@@ -51,16 +50,16 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
     setIsLoading(true);
     try {
       if (Capacitor.isNativePlatform()) {
-        // IDs must match what you configured in RevenueCat Dashboard
         if (!offerings || !offerings.current) {
             alert(lang === 'ar' ? "لا توجد منتجات متاحة للشراء." : "No products available.");
             setIsLoading(false);
             return;
         }
 
-        const pkg = selectedPlan === 'monthly' 
-           ? offerings.current.monthly 
-           : offerings.current.lifetime;
+        let pkg;
+        if (selectedPlan === 'monthly') pkg = offerings.current.monthly;
+        else if (selectedPlan === 'yearly') pkg = offerings.current.annual; // Usually mapped to 'annual' in RC
+        else if (selectedPlan === 'lifetime') pkg = offerings.current.lifetime;
 
         if (pkg) {
            const success = await PurchaseService.purchasePackage(pkg);
@@ -70,7 +69,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                alert(t.activated);
            }
         } else {
-           alert("Package not found configuration.");
+           alert("Package not found in configuration.");
         }
       } else {
         // Fallback for Web Testing logic
@@ -81,7 +80,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
     } catch (e: any) {
       if (!e.userCancelled) {
          console.error(e);
-         // alert("Purchase failed");
       }
     } finally {
       setIsLoading(false);
@@ -108,7 +106,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
 
   // Dynamic Prices (or fallback to static text)
   const monthlyPrice = offerings?.current?.monthly?.product?.priceString || t.monthlyPrice;
-  // const lifetimePrice = offerings?.current?.lifetime?.product?.priceString || t.lifetimePrice;
+  const yearlyPrice = offerings?.current?.annual?.product?.priceString || "$29.99";
+  const lifetimePrice = offerings?.current?.lifetime?.product?.priceString || t.lifetimePrice;
 
   return (
     <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 animate-fade-in">
@@ -116,7 +115,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
         
         {/* Hero Header */}
         <div className="bg-gradient-to-b from-emerald-600 to-emerald-800 p-8 pb-10 text-center relative overflow-hidden shrink-0">
-           {/* Close Button */}
            <button 
              onClick={onClose}
              className={`absolute top-6 ${lang === 'ar' ? 'right-6' : 'left-6'} p-2 bg-black/20 hover:bg-black/40 text-white rounded-full transition z-20 backdrop-blur-md`}
@@ -126,8 +124,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
              </svg>
            </button>
 
-           <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-           
            <div className="relative z-10 flex flex-col items-center">
              <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mb-4 backdrop-blur-md border border-white/20 shadow-xl">
                 <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
@@ -153,37 +149,20 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
             <div className="space-y-3">
               <div className="flex items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
                 <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
                 </div>
                 <div>
                   <h4 className="font-bold text-white text-sm">{t.featureSpeed}</h4>
                   <p className="text-xs text-gray-400">{t.featureSpeedDesc}</p>
                 </div>
               </div>
-              
               <div className="flex items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
                  <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20 shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </div>
                 <div>
                   <h4 className="font-bold text-white text-sm">{t.featureUnlimited}</h4>
                   <p className="text-xs text-gray-400">{t.featureUnlimitedDesc}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
-                 <div className="w-10 h-10 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20 shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className="font-bold text-white text-sm">{t.featureSupport}</h4>
-                  <p className="text-xs text-gray-400">{t.featureSupportDesc}</p>
                 </div>
               </div>
             </div>
@@ -196,20 +175,17 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                       <p className="text-yellow-400 text-xs font-bold">
                           {lang === 'ar' ? "جاري الاتصال بالمتجر... يرجى الانتظار" : "Connecting to store..."}
                       </p>
-                      <p className="text-gray-500 text-[10px] mt-1">
-                          {lang === 'ar' ? "إذا استمر هذا، تحقق من الاتصال بالإنترنت." : "Check your internet connection."}
-                      </p>
                   </div>
               ) : (
                 <div className="space-y-3">
-                    {/* Monthly - Now the ONLY option */}
+                    {/* Monthly */}
                     <div 
                     onClick={() => setSelectedPlan('monthly')}
-                    className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between border-emerald-500 bg-emerald-500/10`}
+                    className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${selectedPlan === 'monthly' ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 bg-black/20'}`}
                     >
                     <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors border-emerald-500 bg-emerald-500`}>
-                            <div className="w-2 h-2 bg-white rounded-full"></div>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'monthly' ? 'border-emerald-500 bg-emerald-500' : 'border-gray-500'}`}>
+                            {selectedPlan === 'monthly' && <div className="w-2 h-2 bg-white rounded-full"></div>}
                         </div>
                         <div>
                         <span className="font-bold text-white block text-sm">{t.monthlyPlan}</span>
@@ -222,18 +198,33 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                     </div>
                     </div>
 
-                    {/* Lifetime - HIDDEN FOR NOW */}
-                    {/* 
+                    {/* Yearly */}
                     <div 
-                    onClick={() => setSelectedPlan('lifetime')}
-                    className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                        selectedPlan === 'lifetime' 
-                        ? 'border-amber-500 bg-amber-500/10' 
-                        : 'border-white/10 bg-black/20 hover:bg-black/30'
-                    }`}
+                    onClick={() => setSelectedPlan('yearly')}
+                    className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${selectedPlan === 'yearly' ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 bg-black/20'}`}
                     >
                     <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedPlan === 'lifetime' ? 'border-amber-500 bg-amber-500' : 'border-gray-500'}`}>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'yearly' ? 'border-emerald-500 bg-emerald-500' : 'border-gray-500'}`}>
+                            {selectedPlan === 'yearly' && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                        </div>
+                        <div>
+                        <span className="font-bold text-white block text-sm">Yearly</span>
+                        <span className="text-xs text-gray-400">Save more with annual plan</span>
+                        </div>
+                    </div>
+                    <div className="text-end">
+                        <span className="font-bold text-emerald-400 text-lg">{yearlyPrice}</span>
+                        <span className="text-[10px] text-gray-500 block">/ year</span>
+                    </div>
+                    </div>
+
+                    {/* Lifetime */}
+                    <div 
+                    onClick={() => setSelectedPlan('lifetime')}
+                    className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${selectedPlan === 'lifetime' ? 'border-amber-500 bg-amber-500/10' : 'border-white/10 bg-black/20'}`}
+                    >
+                    <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'lifetime' ? 'border-amber-500 bg-amber-500' : 'border-gray-500'}`}>
                         {selectedPlan === 'lifetime' && <div className="w-2 h-2 bg-white rounded-full"></div>}
                         </div>
                         <div>
@@ -246,7 +237,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                         <span className="font-bold text-amber-400 text-lg">{lifetimePrice}</span>
                     </div>
                     </div>
-                    */}
                 </div>
               )}
             </div>
@@ -264,9 +254,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
                 <>
-                  <span>
-                    {t.subscribeNow}
-                  </span>
+                  <span>{t.subscribeNow}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={`w-5 h-5 ${lang === 'ar' ? 'rotate-180' : ''}`}>
                      <path fillRule="evenodd" d="M12.97 3.97a.75.75 0 011.06 0l7.5 7.5a.75.75 0 010 1.06l-7.5 7.5a.75.75 0 11-1.06-1.06l6.22-6.22H3a.75.75 0 010-1.5h16.19l-6.22-6.22a.75.75 0 010-1.06z" clipRule="evenodd" />
                   </svg>
