@@ -11,7 +11,8 @@ interface SubscriptionModalProps {
 }
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscribe, onClose, isLimitReached: _isLimitReached }) => {
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('lifetime');
+  // Change default to 'monthly' since it's the only option now
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('monthly');
   const [offerings, setOfferings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isProductsLoaded, setIsProductsLoaded] = useState(false);
@@ -107,7 +108,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
 
   // Dynamic Prices (or fallback to static text)
   const monthlyPrice = offerings?.current?.monthly?.product?.priceString || t.monthlyPrice;
-  const lifetimePrice = offerings?.current?.lifetime?.product?.priceString || t.lifetimePrice;
+  // const lifetimePrice = offerings?.current?.lifetime?.product?.priceString || t.lifetimePrice;
 
   return (
     <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 animate-fade-in">
@@ -201,18 +202,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                   </div>
               ) : (
                 <div className="space-y-3">
-                    {/* Monthly */}
+                    {/* Monthly - Now the ONLY option */}
                     <div 
                     onClick={() => setSelectedPlan('monthly')}
-                    className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                        selectedPlan === 'monthly' 
-                        ? 'border-emerald-500 bg-emerald-500/10' 
-                        : 'border-white/10 bg-black/20 hover:bg-black/30'
-                    }`}
+                    className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between border-emerald-500 bg-emerald-500/10`}
                     >
                     <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedPlan === 'monthly' ? 'border-emerald-500 bg-emerald-500' : 'border-gray-500'}`}>
-                        {selectedPlan === 'monthly' && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors border-emerald-500 bg-emerald-500`}>
+                            <div className="w-2 h-2 bg-white rounded-full"></div>
                         </div>
                         <div>
                         <span className="font-bold text-white block text-sm">{t.monthlyPlan}</span>
@@ -225,7 +222,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                     </div>
                     </div>
 
-                    {/* Lifetime */}
+                    {/* Lifetime - HIDDEN FOR NOW */}
+                    {/* 
                     <div 
                     onClick={() => setSelectedPlan('lifetime')}
                     className={`relative p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
@@ -248,6 +246,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
                         <span className="font-bold text-amber-400 text-lg">{lifetimePrice}</span>
                     </div>
                     </div>
+                    */}
                 </div>
               )}
             </div>
@@ -259,18 +258,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
            <button 
               onClick={handlePurchase}
               disabled={isLoading || (!isProductsLoaded && Capacitor.isNativePlatform())}
-              className={`w-full py-4 font-bold text-lg rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
-                selectedPlan === 'lifetime' 
-                ? 'bg-amber-500 hover:bg-amber-400 text-amber-950 shadow-amber-900/20' 
-                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'
-              } ${isLoading || (!isProductsLoaded && Capacitor.isNativePlatform()) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-full py-4 font-bold text-lg rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 ${isLoading || (!isProductsLoaded && Capacitor.isNativePlatform()) ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isLoading ? (
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
                 <>
                   <span>
-                    {selectedPlan === 'lifetime' ? t.buyLifetime : t.subscribeNow}
+                    {t.subscribeNow}
                   </span>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={`w-5 h-5 ${lang === 'ar' ? 'rotate-180' : ''}`}>
                      <path fillRule="evenodd" d="M12.97 3.97a.75.75 0 011.06 0l7.5 7.5a.75.75 0 010 1.06l-7.5 7.5a.75.75 0 11-1.06-1.06l6.22-6.22H3a.75.75 0 010-1.5h16.19l-6.22-6.22a.75.75 0 010-1.06z" clipRule="evenodd" />

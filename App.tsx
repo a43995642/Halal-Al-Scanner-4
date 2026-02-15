@@ -88,7 +88,7 @@ function App() {
   const [showAuthSuccess, setShowAuthSuccess] = useState(false);
 
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
-  const [isPremium, setIsPremium] = useState(false);
+  const [isPremium, setIsPremium] = useState(() => secureStorage.getItem('isPremium', false));
   const [scanCount, setScanCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   const [hasCustomKey, setHasCustomKey] = useState(false);
@@ -126,7 +126,20 @@ function App() {
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
+    
+    // 1. Initialize RevenueCat
     PurchaseService.initialize();
+
+    // 2. Listen for Subscription Changes (from PurchaseService)
+    const handleSubChange = (e: CustomEvent) => {
+        setIsPremium(e.detail.isPremium);
+        if (e.detail.isPremium) setShowSubscriptionModal(false);
+    };
+    window.addEventListener('subscription-changed' as any, handleSubChange);
+
+    return () => {
+        window.removeEventListener('subscription-changed' as any, handleSubChange);
+    };
   }, []);
   
   // Handle visibility change to save battery
@@ -226,14 +239,13 @@ function App() {
   }, [isLoading, images.length]);
 
   const fetchUserStats = async (uid: string) => { 
-    const { data } = await supabase.from('user_stats').select('scan_count, is_premium').eq('id', uid).single(); 
+    // Logic kept for scan counts, but premium is now handled by RevenueCat directly
+    const { data } = await supabase.from('user_stats').select('scan_count').eq('id', uid).single(); 
     if (data) { 
         setScanCount(data.scan_count); 
-        if (!Capacitor.isNativePlatform()) { 
-            setIsPremium(data.is_premium); 
-            secureStorage.setItem('isPremium', data.is_premium); 
-        } 
     } 
+    // We check RevenueCat status on login too
+    PurchaseService.logIn(uid);
   };
 
   useEffect(() => {
@@ -279,7 +291,7 @@ function App() {
         } else {
             setUserId(null);
             setScanCount(0);
-            setIsPremium(false);
+            PurchaseService.logOut(); // RevenueCat Logout
         }
         setIsAuthLoading(false);
     });
@@ -432,7 +444,12 @@ function App() {
     } catch (err) { setError(t.unexpectedError); } finally { setIsLoading(false); }
   };
 
-  const handleSubscribe = async () => { const isPro = await PurchaseService.checkSubscriptionStatus(); setIsPremium(isPro); };
+  const handleSubscribe = async () => { 
+      // The actual purchase logic is handled inside SubscriptionModal. 
+      // This is called when closing or updating. 
+      const isPro = await PurchaseService.checkSubscriptionStatus(); 
+      setIsPremium(isPro); 
+  };
 
   return (
     <div className="fixed inset-0 bg-black text-white font-sans flex flex-col overflow-hidden">
@@ -465,7 +482,7 @@ function App() {
         {showSettings && <SettingsModal 
             onClose={() => setShowSettings(false)} 
             onClearHistory={() => setHistory([])} 
-            isPremium={isPremium} 
+            isPremium={!!isPremium} 
             onManageSubscription={() => { setShowSettings(false); setShowSubscriptionModal(true); }}
             onOpenAuth={() => { setShowAuthModal(true); }}
             onOpenPrivacy={() => { setShowSettings(false); setShowPrivacy(true); }}

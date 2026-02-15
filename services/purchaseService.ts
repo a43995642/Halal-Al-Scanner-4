@@ -1,35 +1,42 @@
 
-import { Purchases, PurchasesOfferings, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
+import { Purchases, PurchasesOfferings, LOG_LEVEL, CustomerInfo, Package } from '@revenuecat/purchases-capacitor';
 import { Capacitor } from '@capacitor/core';
 import { secureStorage } from '../utils/secureStorage';
 
+// معرف الصلاحية في RevenueCat (يجب أن يطابق ما في لوحة التحكم)
+const ENTITLEMENT_ID = 'pro_access';
+
 // استرداد المفتاح من متغيرات البيئة
-const REVENUECAT_API_KEY = import.meta.env.VITE_REVENUECAT_PUBLIC_KEY || 'goog_PLACEHOLDER';
+const REVENUECAT_API_KEY = import.meta.env.VITE_REVENUECAT_PUBLIC_KEY;
 
 export const PurchaseService = {
   
   async initialize() {
     if (!Capacitor.isNativePlatform()) {
-        console.warn("RevenueCat only works on Native Devices (Android/iOS)");
+        console.warn("RevenueCat works mainly on Native Devices. Using Mock Mode for Web.");
         return;
     }
 
-    // التحقق من صحة المفتاح قبل البدء
     if (!REVENUECAT_API_KEY || REVENUECAT_API_KEY.includes('PLACEHOLDER')) {
-        console.error("🚨 CRITICAL: VITE_REVENUECAT_PUBLIC_KEY is not set in .env file!");
-        console.error("Subscriptions will NOT work. Please add your RevenueCat Public API Key.");
+        console.error("🚨 CRITICAL: RevenueCat Key missing in .env.local");
         return;
     }
 
     try {
+      // 1. تكوين SDK
       if (Capacitor.getPlatform() === 'android') {
         await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
       }
       
-      // في الإنتاج، نقلل مستوى السجلات لتجنب تسريب المعلومات
-      await Purchases.setLogLevel({ level: LOG_LEVEL.ERROR });
+      // 2. إعداد مستوى السجلات (Verbose مفيد أثناء التطوير)
+      await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
       
-      // التحقق من حالة الاشتراك عند البدء
+      // 3. إضافة مستمع لتحديثات العميل (يحدث حالة البريميوم فورياً عند الشراء أو الاستعادة)
+      Purchases.addCustomerInfoUpdateListener((info: CustomerInfo) => {
+          this.updateLocalStatus(info);
+      });
+
+      // 4. التحقق الأولي
       await this.checkSubscriptionStatus();
       
     } catch (error) {
@@ -37,78 +44,92 @@ export const PurchaseService = {
     }
   },
 
+  // جلب العروض المتاحة (Monthly, Yearly, etc.)
   async getOfferings(): Promise<PurchasesOfferings | null> {
      if (!Capacitor.isNativePlatform()) return null;
      try {
        const offerings = await Purchases.getOfferings();
-       return offerings;
+       if (offerings.current !== null) {
+           return offerings;
+       }
+       console.warn("No current offering configured in RevenueCat dashboard.");
+       return null;
      } catch (e) {
        console.error("Error fetching offerings", e);
        return null;
      }
   },
 
-  async purchasePackage(packageIdentifier: any): Promise<boolean> {
+  // تنفيذ عملية الشراء
+  async purchasePackage(pkg: Package): Promise<boolean> {
     try {
-      const { customerInfo } = await Purchases.purchasePackage({ aPackage: packageIdentifier });
-      
-      // تأكد من أن المعرف 'pro_access' يطابق ما قمت بإنشائه في لوحة تحكم RevenueCat
-      if (customerInfo.entitlements.active['pro_access']) {
-         secureStorage.setItem('isPremium', true);
-         return true;
-      }
+      const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
+      return this.updateLocalStatus(customerInfo);
     } catch (error: any) {
-      if (!error.userCancelled) {
+      if (error.userCancelled) {
+         console.log("User cancelled purchase");
+      } else {
          console.error("Purchase Error:", error);
-         throw error;
       }
+      throw error;
     }
-    return false;
   },
 
+  // استعادة المشتريات السابقة
   async restorePurchases(): Promise<boolean> {
     try {
       const { customerInfo } = await Purchases.restorePurchases();
-      if (customerInfo.entitlements.active['pro_access']) {
-         secureStorage.setItem('isPremium', true);
-         return true;
-      } else {
-         // إذا انتهى الاشتراك
-         secureStorage.setItem('isPremium', false);
-      }
+      const isActive = this.updateLocalStatus(customerInfo);
+      return isActive;
     } catch (error) {
       console.error("Restore Error:", error);
       throw error;
     }
-    return false;
   },
 
+  // التحقق من الحالة الحالية
   async checkSubscriptionStatus(): Promise<boolean> {
-     if (!Capacitor.isNativePlatform()) return false;
+     if (!Capacitor.isNativePlatform()) {
+         // Mock logic for web testing: Check local storage
+         return secureStorage.getItem('isPremium', false);
+     }
      
      try {
         const { customerInfo } = await Purchases.getCustomerInfo();
-        const isPro = typeof customerInfo.entitlements.active['pro_access'] !== "undefined";
-        
-        // تحديث التخزين المحلي الآمن
-        secureStorage.setItem('isPremium', isPro);
-        
-        return isPro;
+        return this.updateLocalStatus(customerInfo);
      } catch (e) {
+        console.error("Check Status Error", e);
         return false;
      }
   },
   
-  // ربط المستخدم في RevenueCat (مفيد إذا سجل الدخول عبر Supabase)
+  // دالة مساعدة لتحديث التخزين المحلي بناءً على معلومات RevenueCat
+  updateLocalStatus(info: CustomerInfo): boolean {
+      const isPro = typeof info.entitlements.active[ENTITLEMENT_ID] !== "undefined";
+      console.log(`💎 Subscription Status: ${isPro ? 'PREMIUM' : 'FREE'}`);
+      
+      // حفظ الحالة محلياً لتجنب التأخير في فتح التطبيق
+      secureStorage.setItem('isPremium', isPro);
+      
+      // إرسال حدث مخصص لتحديث واجهة المستخدم فوراً
+      window.dispatchEvent(new CustomEvent('subscription-changed', { detail: { isPremium: isPro } }));
+      
+      return isPro;
+  },
+
+  // ربط معرف المستخدم (عند تسجيل الدخول في التطبيق)
   async logIn(userId: string) {
      if (Capacitor.isNativePlatform()) {
          await Purchases.logIn({ appUserID: userId });
+         await this.checkSubscriptionStatus();
      }
   },
 
   async logOut() {
       if (Capacitor.isNativePlatform()) {
           await Purchases.logOut();
+          secureStorage.setItem('isPremium', false);
+          window.dispatchEvent(new CustomEvent('subscription-changed', { detail: { isPremium: false } }));
       }
   }
 };
