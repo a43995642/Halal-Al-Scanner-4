@@ -71,12 +71,18 @@ export const PurchaseService = {
       if (!Capacitor.isNativePlatform()) return;
       try {
           // محاولة عرض مركز العملاء الأصلي إذا كان مدعوماً
-          await Purchases.presentCustomerCenter();
+          // @ts-ignore - Ignoring type check as this method might not be in v8 types yet
+          if (Purchases.presentCustomerCenter) {
+              // @ts-ignore
+              await Purchases.presentCustomerCenter();
+          } else {
+              throw new Error("Method not found");
+          }
       } catch (e) {
-          console.warn("Customer Center not supported or configured, falling back to manage subscriptions.", e);
+          console.warn("Customer Center not supported, falling back to manage subscriptions.", e);
           // Fallback: فتح صفحة إدارة الاشتراكات في المتجر
           try {
-             // @ts-ignore - some versions use different method names
+             // @ts-ignore
              await Purchases.manageSubscriptions(); 
           } catch (err) {
              console.error("Failed to open subscription management", err);
