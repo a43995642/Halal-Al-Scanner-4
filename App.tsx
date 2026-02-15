@@ -27,7 +27,7 @@ import { useCamera } from './hooks/useCamera';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { App as CapacitorApp } from '@capacitor/app'; 
 import { Capacitor } from '@capacitor/core';
-import { PurchaseService } from './services/purchaseService';
+import { PurchaseService } from './services/purchaseService'; // IMPORTED
 import { Clipboard } from '@capacitor/clipboard';
 import { Share } from '@capacitor/share';
 import { playSuccessSound, playErrorSound, playWarningSound } from './utils/sound'; // Audio Utility
@@ -88,6 +88,7 @@ function App() {
   const [showAuthSuccess, setShowAuthSuccess] = useState(false);
 
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+  // Use secure storage for initial state, but update via RevenueCat events
   const [isPremium, setIsPremium] = useState(() => secureStorage.getItem('isPremium', false));
   const [scanCount, setScanCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
@@ -133,6 +134,7 @@ function App() {
     // 2. Listen for Subscription Changes (from PurchaseService)
     const handleSubChange = (e: CustomEvent) => {
         setIsPremium(e.detail.isPremium);
+        // Automatically close modal if user becomes premium
         if (e.detail.isPremium) setShowSubscriptionModal(false);
     };
     window.addEventListener('subscription-changed' as any, handleSubChange);
@@ -239,13 +241,13 @@ function App() {
   }, [isLoading, images.length]);
 
   const fetchUserStats = async (uid: string) => { 
-    // Logic kept for scan counts, but premium is now handled by RevenueCat directly
+    // We check RevenueCat status on login too
+    PurchaseService.logIn(uid);
+    // Keep local DB check for scan counts if needed
     const { data } = await supabase.from('user_stats').select('scan_count').eq('id', uid).single(); 
     if (data) { 
         setScanCount(data.scan_count); 
     } 
-    // We check RevenueCat status on login too
-    PurchaseService.logIn(uid);
   };
 
   useEffect(() => {
@@ -310,11 +312,9 @@ function App() {
       // 1. Try Native Paywall first (Android/iOS)
       if (Capacitor.isNativePlatform()) {
           const presented = await PurchaseService.presentPaywall();
-          // If presentPaywall returns false/error or user cancelled, 
-          // we MIGHT fall back to the modal if you want, but usually Paywall handles everything.
-          // Since presentPaywall handles the UI, we don't need to do anything else unless it fails badly.
+          // If presentPaywall returns false (not supported or failed to load),
+          // fall back to our custom modal
           if (!presented) {
-              // Only if paywall failed to present (e.g. no internet/config), show fallback modal
               setShowSubscriptionModal(true);
           }
       } else {

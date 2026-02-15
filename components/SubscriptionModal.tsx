@@ -57,8 +57,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onSubscrib
         }
 
         let pkg;
+        // Mapping UI selection to RevenueCat packages (monthly, annual, lifetime)
         if (selectedPlan === 'monthly') pkg = offerings.current.monthly;
-        else if (selectedPlan === 'yearly') pkg = offerings.current.annual; // Usually mapped to 'annual' in RC
+        else if (selectedPlan === 'yearly') pkg = offerings.current.annual; 
         else if (selectedPlan === 'lifetime') pkg = offerings.current.lifetime;
 
         if (pkg) {

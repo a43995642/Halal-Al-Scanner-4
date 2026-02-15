@@ -1,16 +1,17 @@
 
-import { Purchases, PurchasesOfferings, LOG_LEVEL, CustomerInfo, Package, PURCHASE_TYPE } from '@revenuecat/purchases-capacitor';
+import { Purchases, PurchasesOfferings, LOG_LEVEL, CustomerInfo, Package } from '@revenuecat/purchases-capacitor';
 import { Capacitor } from '@capacitor/core';
 import { secureStorage } from '../utils/secureStorage';
 
-// معرف الصلاحية في RevenueCat
-const ENTITLEMENT_ID = 'pro_access';
+// 1. Configuration
+// Ensure this Entitlement ID matches exactly what you created in the RevenueCat Dashboard
+const ENTITLEMENT_ID = 'pro_access'; // Or 'Halal Scanner Pro' if that's the Identifier
 
-// استرداد المفتاح من متغيرات البيئة
 const REVENUECAT_API_KEY = import.meta.env.VITE_REVENUECAT_PUBLIC_KEY;
 
 export const PurchaseService = {
   
+  // --- INITIALIZATION ---
   async initialize() {
     if (!Capacitor.isNativePlatform()) {
         console.warn("RevenueCat works mainly on Native Devices. Using Mock Mode for Web.");
@@ -23,20 +24,23 @@ export const PurchaseService = {
     }
 
     try {
-      // 1. تكوين SDK
+      // Configure SDK
       if (Capacitor.getPlatform() === 'android') {
         await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+      } else if (Capacitor.getPlatform() === 'ios') {
+        // Add iOS key here if needed in future
+        // await Purchases.configure({ apiKey: "ios_key_..." });
       }
       
-      // 2. إعداد مستوى السجلات (Verbose مفيد أثناء التطوير)
+      // Enable Debug Logs
       await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
       
-      // 3. إضافة مستمع لتحديثات العميل (يحدث حالة البريميوم فورياً عند الشراء أو الاستعادة)
+      // Listener for real-time updates (e.g. renewal, expiration outside app)
       Purchases.addCustomerInfoUpdateListener((info: CustomerInfo) => {
           this.updateLocalStatus(info);
       });
 
-      // 4. التحقق الأولي
+      // Initial Status Check
       await this.checkSubscriptionStatus();
       
     } catch (error) {
@@ -44,21 +48,25 @@ export const PurchaseService = {
     }
   },
 
-  // عرض Paywall الجاهز (Native UI)
+  // --- CORE FEATURES ---
+
+  // 1. Present Native Paywall
   async presentPaywall(): Promise<boolean> {
     if (!Capacitor.isNativePlatform()) return false;
+    
     try {
+        // Attempt to show the RevenueCat Native Paywall
+        // Note: verify if your installed version supports 'presentPaywall'. 
+        // If not, use the fallback modal.
         const paywallResult = await Purchases.presentPaywall({
             displayCloseButton: true
         });
         
-        // التحقق مما إذا قام المستخدم بالشراء
         if (paywallResult === "NOT_PRESENTED") {
-             // Paywall didn't show (maybe network error or no config)
              return false;
         }
         
-        // التحقق من الحالة بعد إغلاق الـ Paywall
+        // Re-check status after paywall closes
         return await this.checkSubscriptionStatus();
     } catch (e) {
         console.error("Error presenting paywall:", e);
@@ -66,31 +74,25 @@ export const PurchaseService = {
     }
   },
 
-  // عرض Customer Center (إدارة الاشتراكات)
+  // 2. Customer Center (Manage Subscriptions)
   async presentCustomerCenter() {
       if (!Capacitor.isNativePlatform()) return;
       try {
-          // محاولة عرض مركز العملاء الأصلي إذا كان مدعوماً
-          // @ts-ignore - Ignoring type check as this method might not be in v8 types yet
+          // Use native customer center if available in this SDK version
+          // @ts-ignore
           if (Purchases.presentCustomerCenter) {
-              // @ts-ignore
-              await Purchases.presentCustomerCenter();
+             // @ts-ignore
+             await Purchases.presentCustomerCenter();
           } else {
-              throw new Error("Method not found");
+             // Fallback to platform subscription settings
+             await Purchases.manageSubscriptions(); 
           }
       } catch (e) {
-          console.warn("Customer Center not supported, falling back to manage subscriptions.", e);
-          // Fallback: فتح صفحة إدارة الاشتراكات في المتجر
-          try {
-             // @ts-ignore
-             await Purchases.manageSubscriptions(); 
-          } catch (err) {
-             console.error("Failed to open subscription management", err);
-          }
+          console.warn("Customer Center/Manage Subscriptions failed", e);
       }
   },
 
-  // جلب العروض المتاحة (للاستخدام اليدوي في الويب أو Fallback)
+  // 3. Get Offerings (For Custom UI Fallback)
   async getOfferings(): Promise<PurchasesOfferings | null> {
      if (!Capacitor.isNativePlatform()) return null;
      try {
@@ -106,7 +108,7 @@ export const PurchaseService = {
      }
   },
 
-  // تنفيذ عملية الشراء (حزمة محددة)
+  // 4. Purchase Specific Package (For Custom UI)
   async purchasePackage(pkg: Package): Promise<boolean> {
     try {
       const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
@@ -121,7 +123,7 @@ export const PurchaseService = {
     }
   },
 
-  // استعادة المشتريات السابقة
+  // 5. Restore Purchases
   async restorePurchases(): Promise<boolean> {
     try {
       const { customerInfo } = await Purchases.restorePurchases();
@@ -133,10 +135,10 @@ export const PurchaseService = {
     }
   },
 
-  // التحقق من الحالة الحالية
+  // 6. Check & Update Status
   async checkSubscriptionStatus(): Promise<boolean> {
      if (!Capacitor.isNativePlatform()) {
-         // Mock logic for web testing: Check local storage
+         // Web Fallback: Check local storage (mock)
          return secureStorage.getItem('isPremium', false);
      }
      
@@ -149,21 +151,24 @@ export const PurchaseService = {
      }
   },
   
-  // دالة مساعدة لتحديث التخزين المحلي بناءً على معلومات RevenueCat
+  // Helper: Update Local State based on RevenueCat Info
   updateLocalStatus(info: CustomerInfo): boolean {
+      // Check if the specific entitlement is active
       const isPro = typeof info.entitlements.active[ENTITLEMENT_ID] !== "undefined";
-      console.log(`💎 Subscription Status: ${isPro ? 'PREMIUM' : 'FREE'}`);
       
-      // حفظ الحالة محلياً لتجنب التأخير في فتح التطبيق
+      console.log(`💎 RevenueCat Status: ${isPro ? 'PRO ACTIVE' : 'FREE'}`);
+      
+      // Store locally to avoid async delays on app launch
       secureStorage.setItem('isPremium', isPro);
       
-      // إرسال حدث مخصص لتحديث واجهة المستخدم فوراً
+      // Dispatch event to update React Components immediately
       window.dispatchEvent(new CustomEvent('subscription-changed', { detail: { isPremium: isPro } }));
       
       return isPro;
   },
 
-  // ربط معرف المستخدم (عند تسجيل الدخول في التطبيق)
+  // --- USER IDENTITY ---
+  
   async logIn(userId: string) {
      if (Capacitor.isNativePlatform()) {
          await Purchases.logIn({ appUserID: userId });
